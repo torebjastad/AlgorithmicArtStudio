@@ -227,6 +227,13 @@
             </div>
             <input type="range" id="slider-mouse-radius" data-param="mouseRadius" min="50" max="400" step="10" value="180">
           </div>
+
+          <div class="control-group" data-show-for-mode="domain_warp">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-warp-mouse-dyn" data-param="enableMouseDistortion">
+              <span>Enable Mouse Cursor Distortion</span>
+            </label>
+          </div>
         </section>
 
         <!-- TAB 3: Strokes, Shading & 3D -->
@@ -304,6 +311,13 @@
             <label class="checkbox-label">
               <input type="checkbox" id="check-specular" data-param="specularShading" checked>
               <span>Specular Normal Lighting (Faux 3D Liquid)</span>
+            </label>
+          </div>
+
+          <div class="control-group" data-show-for-mode="domain_warp">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-warp-mouse" data-param="enableMouseDistortion">
+              <span>Enable Mouse Cursor Distortion</span>
             </label>
           </div>
 

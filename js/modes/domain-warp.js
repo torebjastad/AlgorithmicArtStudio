@@ -20,7 +20,8 @@ class DomainWarpMode {
       lightIntensity: 1.3,
       contrast: 1.25,
       brightness: 0.0,
-      mouseInfluence: 0.8
+      enableMouseDistortion: false,
+      mouseInfluence: 0.0
     };
 
     this.programName = 'domain_warp';
@@ -303,12 +304,13 @@ class DomainWarpMode {
     };
 
     const mouse = this.app.mouse;
+    const mouseInf = (p.enableMouseDistortion) ? (mouse.isDown ? p.mouseInfluence * 2.0 : (mouse.isHovering ? p.mouseInfluence : 0.0)) : 0.0;
 
     glRenderer.renderFullscreenQuad(this.programName, {
       u_resolution: [glRenderer.canvas.width, glRenderer.canvas.height],
       u_time: this.app.time * p.timeSpeed,
       u_mouse: [mouse.x * glRenderer.dpr, (this.app.height - mouse.y) * glRenderer.dpr],
-      u_mouseInfluence: mouse.isDown ? p.mouseInfluence * 2.0 : (mouse.isHovering ? p.mouseInfluence : 0.0),
+      u_mouseInfluence: mouseInf,
       u_scale: p.scale,
       u_warpIntensity: p.warpIntensity,
       u_octaves: p.octaves,
