@@ -42,11 +42,19 @@ class ControlsManager {
       btnExportSVG: document.getElementById('btn-export-svg'),
       btnRecordVideo: document.getElementById('btn-record-video'),
       exportProgress: document.getElementById('export-progress-bar'),
-      exportProgressContainer: document.getElementById('export-progress-container')
+      exportProgressContainer: document.getElementById('export-progress-container'),
+
+      btnRevealHUD: document.getElementById('btn-reveal-hud'),
+      hudToast: document.getElementById('hud-toast')
     };
   }
 
   bindEvents() {
+    // Reveal HUD button
+    if (this.ui.btnRevealHUD) {
+      this.ui.btnRevealHUD.addEventListener('click', () => this.toggleHUD());
+    }
+
     // Drawer Toggle
     if (this.ui.drawerToggle) {
       this.ui.drawerToggle.addEventListener('click', () => {
@@ -138,16 +146,23 @@ class ControlsManager {
       if (e.code === 'Space') {
         e.preventDefault();
         this.togglePlayPause();
+      } else if (e.key === 'Tab' || e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        this.toggleHUD();
       } else if (e.key === 'f' || e.key === 'F') {
         this.toggleFullscreen();
       } else if (e.key === 'r' || e.key === 'R') {
         this.randomizeParameters();
       } else if (e.key === 'c' || e.key === 'C') {
         this.app.resetCurrentMode();
-      } else if (e.key === 'h' || e.key === 'H') {
-        this.toggleHUD();
       } else if (e.key === 's' || e.key === 'S') {
         this.app.exporter.exportImage({ width: 1920, height: 1080 });
+      } else if (e.key === 'Escape') {
+        this.ui.exportModal.classList.remove('active');
+        this.ui.infoModal.classList.remove('active');
+        if (this.ui.hud && this.ui.hud.classList.contains('hidden')) {
+          this.toggleHUD();
+        }
       }
     });
   }
@@ -347,8 +362,23 @@ class ControlsManager {
   }
 
   toggleHUD() {
-    if (this.ui.hud) {
-      this.ui.hud.classList.toggle('hidden');
+    if (!this.ui.hud) return;
+    const isNowHidden = this.ui.hud.classList.toggle('hidden');
+    
+    if (this.ui.btnRevealHUD) {
+      this.ui.btnRevealHUD.classList.toggle('visible', isNowHidden);
+    }
+
+    if (this.ui.hudToast) {
+      if (isNowHidden) {
+        this.ui.hudToast.classList.add('active');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => {
+          this.ui.hudToast.classList.remove('active');
+        }, 2500);
+      } else {
+        this.ui.hudToast.classList.remove('active');
+      }
     }
   }
 

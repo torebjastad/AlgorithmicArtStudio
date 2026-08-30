@@ -343,6 +343,16 @@
     </aside>
   </div>
 
+  <!-- Discreet Floating HUD Reveal Button (Shown when HUD is hidden) -->
+  <button id="btn-reveal-hud" title="Reveal Controls (Press H or Tab)" aria-label="Reveal Controls">
+    <span>⚙️</span>
+  </button>
+
+  <!-- HUD Toast Notification -->
+  <div id="hud-toast">
+    <span>UI Hidden &bull; Press <kbd>H</kbd> or <kbd>Tab</kbd> to restore</span>
+  </div>
+
   <!-- High-Res Export Modal -->
   <div class="modal" id="modal-export">
     <div class="modal-backdrop btn-close-modal"></div>
@@ -465,10 +475,10 @@
             <h4>⌨️ Keyboard Shortcuts</h4>
             <ul>
               <li><kbd>Space</kbd> Pause / Resume animation</li>
+              <li><kbd>Tab</kbd> or <kbd>H</kbd> Hide / Reveal All HUD Overlays</li>
               <li><kbd>F</kbd> Toggle Fullscreen mode</li>
               <li><kbd>R</kbd> Smart Randomize parameters & palette</li>
               <li><kbd>C</kbd> Clear canvas trails</li>
-              <li><kbd>H</kbd> Toggle / Hide all HUD UI</li>
               <li><kbd>S</kbd> Instant 1080p snapshot</li>
             </ul>
           </div>
