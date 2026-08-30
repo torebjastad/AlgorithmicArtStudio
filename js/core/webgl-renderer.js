@@ -1,37 +1,41 @@
 /**
  * WebGL2 Hardware Accelerated Shader & Mesh Renderer
- * Supports custom GLSL fragment shaders, quad rendering, and 3D wireframe/shaded terrain
+ * Robust uniform type dispatching, program caching, VAO/VBO quad buffers, viewport management
  */
 
 class WebGLRenderer {
   constructor(canvasElement) {
     this.canvas = canvasElement;
-    this.gl = this.canvas.getContext('webgl2', {
+    
+    const contextAttributes = {
       alpha: false,
       depth: true,
       antialias: true,
       powerPreference: 'high-performance',
       preserveDrawingBuffer: true
-    }) || this.canvas.getContext('webgl', {
-      alpha: false,
-      depth: true,
-      antialias: true,
-      powerPreference: 'high-performance',
-      preserveDrawingBuffer: true
-    });
+    };
+
+    this.gl = this.canvas.getContext('webgl2', contextAttributes) || 
+              this.canvas.getContext('webgl', contextAttributes) ||
+              this.canvas.getContext('experimental-webgl', contextAttributes);
 
     if (!this.gl) {
-      console.warn('WebGL not supported, falling back to 2D Canvas');
+      console.warn('WebGL not supported on this device/browser');
       this.supported = false;
       return;
     }
 
     this.supported = true;
+    this.isWebGL2 = typeof WebGL2RenderingContext !== 'undefined' && this.gl instanceof WebGL2RenderingContext;
     this.programs = new Map();
     this.currentProgram = null;
 
-    this.initQuadBuffer();
     this.dpr = window.devicePixelRatio || 1;
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+
+    this.initQuadBuffer();
+    this.resize(this.width, this.height, this.dpr);
   }
 
   initQuadBuffer() {
@@ -46,7 +50,7 @@ class WebGLRenderer {
        1,  1
     ]);
 
-    this.quadVAO = gl.createVertexArray ? gl.createVertexArray() : null;
+    this.quadVAO = (this.isWebGL2 && gl.createVertexArray) ? gl.createVertexArray() : null;
     if (this.quadVAO) gl.bindVertexArray(this.quadVAO);
 
     this.quadVBO = gl.createBuffer();
@@ -66,16 +70,17 @@ class WebGLRenderer {
     this.height = height;
     this.dpr = dpr;
 
-    const displayWidth = Math.floor(width * this.dpr);
-    const displayHeight = Math.floor(height * this.dpr);
+    const displayWidth = Math.max(1, Math.floor(width * this.dpr));
+    const displayHeight = Math.max(1, Math.floor(height * this.dpr));
 
     if (this.canvas.width !== displayWidth || this.canvas.height !== displayHeight) {
       this.canvas.width = displayWidth;
       this.canvas.height = displayHeight;
       this.canvas.style.width = `${width}px`;
       this.canvas.style.height = `${height}px`;
-      this.gl.viewport(0, 0, displayWidth, displayHeight);
     }
+
+    this.gl.viewport(0, 0, displayWidth, displayHeight);
   }
 
   compileShader(source, type) {
@@ -111,12 +116,17 @@ class WebGLRenderer {
         throw new Error(`Program link error: ${gl.getProgramInfoLog(program)}`);
       }
 
-      // Query active uniforms and attributes
+      // Query active uniforms and their types
       const uniforms = {};
       const numUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
       for (let i = 0; i < numUniforms; i++) {
         const info = gl.getActiveUniform(program, i);
-        uniforms[info.name] = gl.getUniformLocation(program, info.name);
+        const loc = gl.getUniformLocation(program, info.name);
+        uniforms[info.name] = {
+          location: loc,
+          type: info.type,
+          size: info.size
+        };
       }
 
       const programObj = {
@@ -151,15 +161,28 @@ class WebGLRenderer {
 
     const gl = this.gl;
 
-    // Apply uniforms
+    // Apply uniforms with exact GL type matching
     for (const [key, value] of Object.entries(uniforms)) {
-      const loc = prog.uniforms[key];
-      if (!loc) continue;
+      const uInfo = prog.uniforms[key];
+      if (!uInfo || !uInfo.location) continue;
 
-      if (typeof value === 'number') {
+      const loc = uInfo.location;
+      const type = uInfo.type;
+
+      if (type === gl.INT || type === gl.BOOL || type === gl.SAMPLER_2D) {
+        gl.uniform1i(loc, typeof value === 'boolean' ? (value ? 1 : 0) : Math.round(value));
+      } else if (type === gl.FLOAT) {
         gl.uniform1f(loc, value);
-      } else if (typeof value === 'boolean') {
-        gl.uniform1i(loc, value ? 1 : 0);
+      } else if (type === gl.FLOAT_VEC2) {
+        gl.uniform2f(loc, value[0], value[1]);
+      } else if (type === gl.FLOAT_VEC3) {
+        gl.uniform3f(loc, value[0], value[1], value[2]);
+      } else if (type === gl.FLOAT_VEC4) {
+        gl.uniform4f(loc, value[0], value[1], value[2], value[3]);
+      } else if (type === gl.INT_VEC2) {
+        gl.uniform2i(loc, value[0], value[1]);
+      } else if (type === gl.INT_VEC3) {
+        gl.uniform3i(loc, value[0], value[1], value[2]);
       } else if (Array.isArray(value) || ArrayBuffer.isView(value)) {
         switch (value.length) {
           case 2: gl.uniform2fv(loc, value); break;
@@ -168,6 +191,8 @@ class WebGLRenderer {
           case 9: gl.uniformMatrix3fv(loc, false, value); break;
           case 16: gl.uniformMatrix4fv(loc, false, value); break;
         }
+      } else if (typeof value === 'number') {
+        gl.uniform1f(loc, value);
       }
     }
 

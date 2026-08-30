@@ -79,9 +79,15 @@ class PerlinArtApp {
     if (modeKey === 'domain_warp') {
       this.canvasGL.style.display = 'block';
       this.canvas2D.style.display = 'none';
+      if (this.webgl) {
+        this.webgl.resize(this.width, this.height);
+      }
     } else {
       this.canvasGL.style.display = 'none';
       this.canvas2D.style.display = 'block';
+      if (this.renderer2D) {
+        this.renderer2D.resize(this.width, this.height);
+      }
     }
 
     this.resetCurrentMode();
