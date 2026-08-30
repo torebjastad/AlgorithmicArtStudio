@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Perlin Noise Studio | Generative Art & Mathematical Physics</title>
+  <meta name="description" content="Lightning-fast GPU & Vector generative art studio powered by Perlin noise, Simplex noise, Curl noise, Domain Warping, and 4K/8K export.">
+  
+  <!-- Modern Typography & Math Typesetting -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="if (window.renderMathInElement) renderMathInElement(document.body);"></script>
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Fullscreen Rendering Canvases -->
+  <div id="canvas-container">
+    <canvas id="canvas-2d"></canvas>
+    <canvas id="canvas-gl"></canvas>
+  </div>
+
+  <!-- Sleek Floating HUD UI -->
+  <div id="hud">
+    <!-- Top Action Bar -->
+    <header class="glass-bar top-bar">
+      <div class="brand">
+        <div class="brand-glow-dot"></div>
+        <span class="brand-title">PERLIN STUDIO</span>
+        <span class="badge" id="val-mode-badge">Flow Fields</span>
+      </div>
+
+      <!-- Presets Scrollbar -->
+      <div class="preset-scroll-container">
+        <div class="preset-bar" id="preset-bar">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="hud-actions">
+        <div class="stats-group">
+          <span class="stat-pill"><span class="stat-label">FPS</span> <span id="val-fps" class="stat-num">60</span></span>
+          <span class="stat-pill"><span class="stat-label">PARTICLES</span> <span id="val-particle-count" class="stat-num">8,000</span></span>
+        </div>
+
+        <button class="btn-icon" id="btn-play-pause" title="Play / Pause (Space)" aria-label="Play/Pause">
+          <span class="icon">⏸</span>
+        </button>
+
+        <button class="btn-icon" id="btn-clear" title="Clear Canvas (C)" aria-label="Clear">
+          <span class="icon">🧹</span>
+        </button>
+
+        <button class="btn-icon btn-highlight" id="btn-randomize" title="Smart Randomize (R)" aria-label="Randomize">
+          <span class="icon">🎲</span>
+        </button>
+
+        <button class="btn-icon" id="btn-open-export" title="Export High-Res Art" aria-label="Export">
+          <span class="icon">📷</span>
+        </button>
+
+        <button class="btn-icon" id="btn-fullscreen" title="Toggle Fullscreen (F)" aria-label="Fullscreen">
+          <span class="icon">⛶</span>
+        </button>
+
+        <button class="btn-icon" id="btn-open-info" title="Math & Algorithm Guide" aria-label="Info">
+          <span class="icon">💡</span>
+        </button>
+
+        <button class="btn-icon" id="btn-toggle-drawer" title="Toggle Parameters (H)" aria-label="Toggle Controls">
+          <span class="icon">⚙️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Collapsible Control Drawer -->
+    <aside class="glass-drawer" id="control-drawer">
+      <div class="drawer-header">
+        <h3>Studio Controls</h3>
+        <span class="shortcut-tip">Press <strong>H</strong> to hide HUD</span>
+      </div>
+
+      <!-- Control Tabs -->
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="tab-mode">Mode & Noise</button>
+        <button class="tab-btn" data-tab="tab-dynamics">Dynamics</button>
+        <button class="tab-btn" data-tab="tab-strokes">Strokes & 3D</button>
+        <button class="tab-btn" data-tab="tab-palettes">Palettes</button>
+      </nav>
+
+      <div class="tab-content">
+        <!-- TAB 1: Mode & Noise -->
+        <section class="tab-pane active" id="tab-mode">
+          <div class="control-group">
+            <label for="select-mode">Generative Mode</label>
+            <select id="select-mode" class="glass-select">
+              <option value="flow">🌌 Cosmic Flow Fields (Particles)</option>
+              <option value="domain_warp">🌀 Domain Warped Fluid (GPU GLSL)</option>
+              <option value="topographic">🗺️ Topographic Isolines (Mapmaker)</option>
+              <option value="terrain3d">🌆 3D Cyber Horizon / Terrain</option>
+              <option value="ribbons">🎀 Harmonic Silk Ribbons</option>
+            </select>
+          </div>
+
+          <!-- Flow specific: noise algorithm -->
+          <div class="control-group" data-show-for-mode="flow">
+            <label for="select-noise-type">Noise Vector Algorithm</label>
+            <select id="select-noise-type" class="glass-select" data-param="noiseType">
+              <option value="curl">Curl Noise (Divergence-Free Fluid Swirls)</option>
+              <option value="perlin">Improved Perlin Noise 3D</option>
+              <option value="simplex">Simplex Noise 3D</option>
+              <option value="vortex">Spiral Vortex Noise</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="label-row">
+              <label for="slider-scale">Noise Scale / Frequency</label>
+              <span class="val-badge" data-badge="noiseScale">0.0030</span>
+            </div>
+            <input type="range" id="slider-scale" data-param="noiseScale" min="0.0005" max="0.015" step="0.0001" value="0.003">
+          </div>
+
+          <div class="control-group" data-show-for-mode="domain_warp">
+            <div class="label-row">
+              <label for="slider-dw-scale">Domain Warp Scale</label>
+              <span class="val-badge" data-badge="scale">2.50</span>
+            </div>
+            <input type="range" id="slider-dw-scale" data-param="scale" min="0.5" max="8.0" step="0.1" value="2.5">
+          </div>
+
+          <div class="control-group" data-show-for-mode="domain_warp">
+            <div class="label-row">
+              <label for="slider-warp-intensity">Warp Distortion Power</label>
+              <span class="val-badge" data-badge="warpIntensity">2.20</span>
+            </div>
+            <input type="range" id="slider-warp-intensity" data-param="warpIntensity" min="0.2" max="6.0" step="0.1" value="2.2">
+          </div>
+
+          <div class="control-group">
+            <div class="label-row">
+              <label for="slider-octaves">fBm Octaves (Harmonic Detail)</label>
+              <span class="val-badge" data-badge="octaves">3</span>
+            </div>
+            <input type="range" id="slider-octaves" data-param="octaves" min="1" max="8" step="1" value="3">
+          </div>
+
+          <div class="control-group">
+            <div class="label-row">
+              <label for="slider-persistence">Persistence (Amplitude Decay)</label>
+              <span class="val-badge" data-badge="persistence">0.50</span>
+            </div>
+            <input type="range" id="slider-persistence" data-param="persistence" min="0.1" max="0.9" step="0.02" value="0.5">
+          </div>
+
+          <div class="control-group">
+            <div class="label-row">
+              <label for="slider-lacunarity">Lacunarity (Frequency Growth)</label>
+              <span class="val-badge" data-badge="lacunarity">2.00</span>
+            </div>
+            <input type="range" id="slider-lacunarity" data-param="lacunarity" min="1.0" max="4.0" step="0.1" value="2.0">
+          </div>
+
+          <div class="control-group">
+            <div class="label-row">
+              <label for="slider-time-speed">Evolution / Time Speed</label>
+              <span class="val-badge" data-badge="timeSpeed">0.002</span>
+            </div>
+            <input type="range" id="slider-time-speed" data-param="timeSpeed" min="0.0" max="0.02" step="0.0005" value="0.002">
+          </div>
+        </section>
+
+        <!-- TAB 2: Dynamics & Particles -->
+        <section class="tab-pane" id="tab-dynamics">
+          <div class="control-group" data-show-for-mode="flow">
+            <div class="label-row">
+              <label for="slider-particle-count">Particle Count</label>
+              <span class="val-badge" data-badge="particleCount">8000</span>
+            </div>
+            <input type="range" id="slider-particle-count" data-param="particleCount" min="500" max="60000" step="500" value="8000">
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow">
+            <div class="label-row">
+              <label for="slider-particle-speed">Particle Flow Velocity</label>
+              <span class="val-badge" data-badge="particleSpeed">2.50</span>
+            </div>
+            <input type="range" id="slider-particle-speed" data-param="particleSpeed" min="0.5" max="8.0" step="0.1" value="2.5">
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow">
+            <div class="label-row">
+              <label for="slider-fade-rate">Trail Decay Rate (Motion Blur)</label>
+              <span class="val-badge" data-badge="fadeRate">0.04</span>
+            </div>
+            <input type="range" id="slider-fade-rate" data-param="fadeRate" min="0.002" max="0.25" step="0.002" value="0.04">
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow">
+            <div class="label-row">
+              <label for="slider-jitter">Brownian Motion Jitter</label>
+              <span class="val-badge" data-badge="jitter">0.05</span>
+            </div>
+            <input type="range" id="slider-jitter" data-param="jitter" min="0.0" max="0.5" step="0.01" value="0.05">
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow">
+            <label for="select-mouse-force">Mouse Interactive Force</label>
+            <select id="select-mouse-force" class="glass-select" data-param="mouseForce">
+              <option value="none">None (Ambient Noise Only)</option>
+              <option value="attract">Gravity Attraction</option>
+              <option value="repel">Magnetic Repulsion</option>
+              <option value="swirl">Vortex Cyclone Swirl</option>
+            </select>
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow">
+            <div class="label-row">
+              <label for="slider-mouse-radius">Mouse Radius</label>
+              <span class="val-badge" data-badge="mouseRadius">180</span>
+            </div>
+            <input type="range" id="slider-mouse-radius" data-param="mouseRadius" min="50" max="400" step="10" value="180">
+          </div>
+        </section>
+
+        <!-- TAB 3: Strokes, Shading & 3D -->
+        <section class="tab-pane" id="tab-strokes">
+          <div class="control-group" data-show-for-mode="flow,topographic,terrain3d,ribbons">
+            <div class="label-row">
+              <label for="slider-stroke-width">Stroke Line Width</label>
+              <span class="val-badge" data-badge="strokeWidth">1.50</span>
+            </div>
+            <input type="range" id="slider-stroke-width" data-param="strokeWidth" min="0.5" max="8.0" step="0.1" value="1.5">
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-taper" data-param="taperWidth" checked>
+              <span>Dynamic Velocity Stroke Tapering</span>
+            </label>
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow,ribbons">
+            <label for="select-blend-mode">Canvas Blend Mode</label>
+            <select id="select-blend-mode" class="glass-select" data-param="blendMode">
+              <option value="lighter">Lighter / Additive (Luminous Glow)</option>
+              <option value="screen">Screen (Soft Ethereal)</option>
+              <option value="source-over">Standard Alpha (Source Over)</option>
+              <option value="overlay">Overlay (High Contrast)</option>
+              <option value="multiply">Multiply (Ink Pigment)</option>
+            </select>
+          </div>
+
+          <!-- Topographic controls -->
+          <div class="control-group" data-show-for-mode="topographic">
+            <div class="label-row">
+              <label for="slider-contours">Contour Elevation Levels</label>
+              <span class="val-badge" data-badge="contourLevels">24</span>
+            </div>
+            <input type="range" id="slider-contours" data-param="contourLevels" min="6" max="60" step="2" value="24">
+          </div>
+
+          <div class="control-group" data-show-for-mode="topographic">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-fill-bands" data-param="fillBands" checked>
+              <span>Elevation Gradient Shading</span>
+            </label>
+          </div>
+
+          <!-- 3D Terrain controls -->
+          <div class="control-group" data-show-for-mode="terrain3d">
+            <label for="select-terrain-style">3D Render Style</label>
+            <select id="select-terrain-style" class="glass-select" data-param="renderStyle">
+              <option value="wireframe">Cyber Wireframe Grid</option>
+              <option value="shaded">Faceted Shaded Polygons</option>
+              <option value="hybrid">Wireframe + Shaded Mesh</option>
+              <option value="points">Matrix Point Cloud</option>
+            </select>
+          </div>
+
+          <div class="control-group" data-show-for-mode="terrain3d">
+            <div class="label-row">
+              <label for="slider-terrain-height">Mountain Peak Height</label>
+              <span class="val-badge" data-badge="heightMultiplier">220</span>
+            </div>
+            <input type="range" id="slider-terrain-height" data-param="heightMultiplier" min="50" max="500" step="10" value="220">
+          </div>
+
+          <div class="control-group" data-show-for-mode="terrain3d">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-ridged" data-param="ridgedPeaks">
+              <span>Ridged Multifractal Sharp Peaks</span>
+            </label>
+          </div>
+
+          <!-- Domain Warp Controls -->
+          <div class="control-group" data-show-for-mode="domain_warp">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-specular" data-param="specularShading" checked>
+              <span>Specular Normal Lighting (Faux 3D Liquid)</span>
+            </label>
+          </div>
+
+          <div class="control-group" data-show-for-mode="domain_warp">
+            <div class="label-row">
+              <label for="slider-contrast">Color Contrast</label>
+              <span class="val-badge" data-badge="contrast">1.20</span>
+            </div>
+            <input type="range" id="slider-contrast" data-param="contrast" min="0.5" max="3.0" step="0.1" value="1.2">
+          </div>
+        </section>
+
+        <!-- TAB 4: Palettes & Colors -->
+        <section class="tab-pane" id="tab-palettes">
+          <div class="control-group">
+            <label>Artist Color Themes (18+)</label>
+            <div class="palette-grid" id="palette-grid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+  <!-- High-Res Export Modal -->
+  <div class="modal" id="modal-export">
+    <div class="modal-backdrop btn-close-modal"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>📷 High-Resolution Art Export</h2>
+        <button class="btn-close-modal btn-icon">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Render uncompressed master artwork directly on offscreen GPU/Canvas buffers up to 8K Ultra HD.</p>
+
+        <div class="form-row">
+          <label for="select-export-res">Output Resolution</label>
+          <select id="select-export-res" class="glass-select">
+            <option value="4k" selected>4K UHD (3840 × 2160)</option>
+            <option value="8k">8K Ultra HD (7680 × 4320) - Supreme Quality</option>
+            <option value="2k">2K QHD (2560 × 1440)</option>
+            <option value="1080p">Full HD (1920 × 1080)</option>
+            <option value="square4k">Square Master (4096 × 4096)</option>
+            <option value="screen">Current Screen Resolution</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label for="select-export-format">Image Format</label>
+          <select id="select-export-format" class="glass-select">
+            <option value="image/png" selected>Lossless PNG (.png)</option>
+            <option value="image/jpeg">High Quality JPEG (.jpg)</option>
+          </select>
+        </div>
+
+        <div class="modal-btn-row">
+          <button class="btn-primary" id="btn-export-image">
+            <span>Download Master Image</span>
+          </button>
+          <button class="btn-secondary" id="btn-export-svg">
+            <span>Export Vector SVG</span>
+          </button>
+        </div>
+
+        <hr class="modal-divider">
+
+        <h3>🎥 Video Animation Recording</h3>
+        <p class="modal-desc">Record smooth 60 FPS loop video in WebM format.</p>
+
+        <div class="form-row">
+          <label for="input-video-duration">Duration (Seconds)</label>
+          <input type="number" id="input-video-duration" class="glass-input" min="1" max="30" value="5">
+        </div>
+
+        <div id="export-progress-container" style="display: none;">
+          <div class="progress-bar-bg">
+            <div id="export-progress-bar" class="progress-bar-fill"></div>
+          </div>
+          <span class="progress-label">Recording frames in real-time...</span>
+        </div>
+
+        <button class="btn-primary btn-record" id="btn-record-video">
+          <span>⏺ Record WebM Animation Loop</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mathematical & Algorithmic Guide Modal -->
+  <div class="modal" id="modal-info">
+    <div class="modal-backdrop btn-close-modal"></div>
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h2>🌀 The Mathematics of Perlin Noise & Generative Art</h2>
+        <button class="btn-close-modal btn-icon">&times;</button>
+      </div>
+      <div class="modal-body">
+        <article class="math-guide">
+          <h3>1. What is Perlin Noise?</h3>
+          <p>
+            Invented by <strong>Ken Perlin</strong> in 1983 for the groundbreaking movie <em>Tron</em> (which earned him an Academy Award for Technical Achievement in 1997), Perlin noise is a continuous lattice gradient noise function designed to simulate natural organic textures like clouds, terrain, marble, and turbulent water without the harsh artificial randomness of white noise.
+          </p>
+          <p>
+            Unlike pure random noise, Perlin noise assigns pseudo-random gradient vectors to integer grid vertices and smoothly interpolates between them using Ken Perlin's quintic curve:
+          </p>
+          <div class="math-equation">
+            \( s(t) = 6t^5 - 15t^4 + 10t^3 \)
+          </div>
+          <p>
+            This quintic easing curve has zero 1st and 2nd derivatives at grid boundaries, eliminating visual seams and directional artifacts.
+          </p>
+
+          <h3>2. Fractional Brownian Motion (fBm) & Octaves</h3>
+          <p>
+            Nature exhibits fractal self-similarity at multiple scales. We achieve this by summing multiple layers (octaves) of noise with doubling frequencies (<em>lacunarity</em>) and halving amplitudes (<em>persistence</em>):
+          </p>
+          <div class="math-equation">
+            \( \text{fBm}(p) = \sum_{k=0}^{N-1} \text{persistence}^k \cdot \text{noise}(\text{lacunarity}^k \cdot p) \)
+          </div>
+
+          <h3>3. Curl Noise: Divergence-Free Flow Fields</h3>
+          <p>
+            Standard potential noise fields cause particles to cluster together into sinks or explode from sources. By computing the <strong>mathematical curl</strong> \( \nabla \times \vec{\Psi} \) of a scalar noise potential, we obtain a solenoidal (divergence-free) velocity vector field:
+          </p>
+          <div class="math-equation">
+            \( \vec{v}(x, y) = \left( \frac{\partial \psi}{\partial y}, -\frac{\partial \psi}{\partial x} \right) \)
+          </div>
+          <p>
+            Because \( \nabla \cdot (\nabla \times \vec{\Psi}) = 0 \), the fluid is incompressible, producing hypnotic swirling vortices where particles glide endlessly without clumping!
+          </p>
+
+          <h3>4. Inigo Quilez Domain Warping</h3>
+          <p>
+            Domain warping feeds multi-octave noise back into its own coordinate coordinates:
+          </p>
+          <div class="math-equation">
+            \( f(p) = \text{fBm}(p + \alpha \cdot \text{fBm}(p + \beta \cdot \text{fBm}(p))) \)
+          </div>
+          <p>
+            This recursive feedback creates the fluid marbling, liquid smoke, and cosmic nebulae rendered in the GPU GLSL shader mode.
+          </p>
+
+          <div class="shortcut-cheatsheet">
+            <h4>⌨️ Keyboard Shortcuts</h4>
+            <ul>
+              <li><kbd>Space</kbd> Pause / Resume animation</li>
+              <li><kbd>F</kbd> Toggle Fullscreen mode</li>
+              <li><kbd>R</kbd> Smart Randomize parameters & palette</li>
+              <li><kbd>C</kbd> Clear canvas trails</li>
+              <li><kbd>H</kbd> Toggle / Hide all HUD UI</li>
+              <li><kbd>S</kbd> Instant 1080p snapshot</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/noise/perlin.js"></script>
+  <script src="js/noise/simplex.js"></script>
+  <script src="js/noise/curl.js"></script>
+  <script src="js/core/color-palette.js"></script>
+  <script src="js/core/canvas-renderer.js"></script>
+  <script src="js/core/webgl-renderer.js"></script>
+  <script src="js/core/exporter.js"></script>
+  <script src="js/modes/flow-fields.js"></script>
+  <script src="js/modes/domain-warp.js"></script>
+  <script src="js/modes/topographic.js"></script>
+  <script src="js/modes/terrain3d.js"></script>
+  <script src="js/modes/ribbons.js"></script>
+  <script src="js/ui/presets.js"></script>
+  <script src="js/ui/controls.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
