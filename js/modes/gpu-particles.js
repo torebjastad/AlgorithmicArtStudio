@@ -151,37 +151,43 @@ class GPUParticlesMode {
         vec2 seed = a_vel_seed.zw;
 
         // Respawn when particle expires or leaves the screen
-        if (age >= maxLife || pos.x < -30.0 || pos.x > u_resolution.x + 30.0 || pos.y < -30.0 || pos.y > u_resolution.y + 30.0) {
-          vec2 rnd = hash22(seed + vec2(u_time * 0.1, 1.73));
+        if (age >= maxLife || pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0) {
+          vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
           pos = vec2(rnd.x * u_resolution.x, rnd.y * u_resolution.y);
           vel = vec2(0.0);
           age = 0.0;
-          maxLife = 60.0 + hash12(seed + vec2(u_time * 0.1, 3.91)) * 140.0;
+          maxLife = 120.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 260.0;
           seed += vec2(0.137, 0.291);
         }
 
+        float t = u_time * 0.04;
         vec2 np = pos * u_noiseScale;
         vec2 targetVel = vec2(0.0);
 
         if (u_noiseType == 0) {
-          // Divergence-Free Flow Swirls via potential rotation
-          float n = fbm(np + vec2(u_time * 0.06, u_time * 0.04));
-          float angle = n * 6.2831853 * 1.8;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
+          // Divergence-Free Flow Swirls (Curl of potential Psi)
+          float eps = 0.005;
+          float n1 = fbm(np + vec2(0.0, eps) + vec2(t * 0.02, 0.0));
+          float n2 = fbm(np - vec2(0.0, eps) + vec2(t * 0.02, 0.0));
+          float n3 = fbm(np + vec2(eps, 0.0) + vec2(0.0, t * 0.02));
+          float n4 = fbm(np - vec2(eps, 0.0) + vec2(0.0, t * 0.02));
+          vec2 c = vec2((n1 - n2) / (2.0 * eps), -(n3 - n4) / (2.0 * eps));
+          float len = length(c);
+          targetVel = (len > 0.0001 ? (c / len) : vec2(1.0, 0.0)) * u_particleSpeed * 2.6;
         } else if (u_noiseType == 1) {
           // Harmonic Perlin Angles
-          float angle = fbm(np + vec2(0.05, 0.05) * u_time) * 6.2831853 * 2.2;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
+          float angle = fbm(np + vec2(t * 0.015, t * 0.015)) * 6.2831853 * 2.0;
+          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.6;
         } else if (u_noiseType == 3) {
           // Vortex Spiral Flow
           vec2 center = u_resolution * 0.5;
           float dist = length(pos - center);
-          float angle = fbm(np + vec2(0.04, 0.04) * u_time) * 6.2831853 + dist * 0.006;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
+          float angle = fbm(np + vec2(t * 0.01, t * 0.01)) * 6.2831853 * 1.5 + dist * 0.004;
+          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.6;
         } else {
           // Simplex Harmonic Flow
-          float angle = fbm(np * 1.4 + vec2(0.05, 0.05) * u_time) * 6.2831853 * 2.0;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
+          float angle = snoise(np * 1.2 + vec2(t * 0.02, t * 0.02)) * 6.2831853 * 2.0;
+          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.6;
         }
 
         // Interactive Mouse Influence
@@ -197,7 +203,7 @@ class GPUParticlesMode {
         }
 
         // Smooth fluid inertia
-        vel = mix(vel, targetVel, 0.20);
+        vel = mix(vel, targetVel, 0.22);
         pos += vel;
 
         v_pos_life = vec4(pos, age, maxLife);
