@@ -15,8 +15,8 @@ const ART_PRESETS = [
       noiseScale: 0.0025,
       octaves: 3,
       particleSpeed: 2.2,
-      streakLength: 3.5,
-      glowAlpha: 0.8,
+      pointSize: 2.4,
+      glowAlpha: 0.85,
       timeSpeed: 0.0025
     }
   },
@@ -31,8 +31,8 @@ const ART_PRESETS = [
       noiseScale: 0.0032,
       octaves: 4,
       particleSpeed: 2.8,
-      streakLength: 4.0,
-      glowAlpha: 0.75,
+      pointSize: 1.8,
+      glowAlpha: 0.8,
       timeSpeed: 0.003
     }
   },
@@ -47,8 +47,8 @@ const ART_PRESETS = [
       noiseScale: 0.004,
       octaves: 4,
       particleSpeed: 2.4,
-      streakLength: 3.2,
-      glowAlpha: 0.85,
+      pointSize: 2.8,
+      glowAlpha: 0.9,
       timeSpeed: 0.0028
     }
   },
