@@ -5,6 +5,54 @@
 
 const ART_PRESETS = [
   {
+    id: 'gpu_supernova',
+    name: '✨ 500k Stardust Nebula (GPU)',
+    mode: 'gpu_particles',
+    palette: 'nebula',
+    params: {
+      particleCount: 500000,
+      noiseType: 'curl',
+      noiseScale: 0.0025,
+      octaves: 3,
+      particleSpeed: 2.2,
+      pointSize: 1.6,
+      glowAlpha: 0.65,
+      timeSpeed: 0.0025
+    }
+  },
+  {
+    id: 'gpu_vortex_million',
+    name: '🌀 1 Million Vortex (GPU)',
+    mode: 'gpu_particles',
+    palette: 'cyberpunk',
+    params: {
+      particleCount: 1000000,
+      noiseType: 'vortex',
+      noiseScale: 0.0032,
+      octaves: 4,
+      particleSpeed: 2.8,
+      pointSize: 1.2,
+      glowAlpha: 0.55,
+      timeSpeed: 0.003
+    }
+  },
+  {
+    id: 'gpu_quantum_filaments',
+    name: '⚛️ Quantum Filaments (GPU)',
+    mode: 'gpu_particles',
+    palette: 'quantumFoam',
+    params: {
+      particleCount: 350000,
+      noiseType: 'curl',
+      noiseScale: 0.004,
+      octaves: 4,
+      particleSpeed: 2.4,
+      pointSize: 1.8,
+      glowAlpha: 0.7,
+      timeSpeed: 0.0028
+    }
+  },
+  {
     id: 'cyberpunk_flow',
     name: '⚡ Cyberpunk Currents',
     mode: 'flow',

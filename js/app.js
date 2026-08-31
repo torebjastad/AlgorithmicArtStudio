@@ -38,6 +38,7 @@ class PerlinArtApp {
 
     // Modes Registry
     this.modes = {
+      gpu_particles: new GPUParticlesMode(this),
       flow: new FlowFieldMode(this),
       domain_warp: new DomainWarpMode(this),
       topographic: new TopographicMode(this),
@@ -45,8 +46,8 @@ class PerlinArtApp {
       ribbons: new RibbonsMode(this)
     };
 
-    this.currentModeKey = 'flow';
-    this.currentMode = this.modes.flow;
+    this.currentModeKey = 'gpu_particles';
+    this.currentMode = this.modes.gpu_particles;
 
     // Animation Loop State
     this.isRunning = true;
@@ -58,7 +59,7 @@ class PerlinArtApp {
 
     this.initEvents();
     this.controls = new ControlsManager(this);
-    this.switchMode('flow');
+    this.switchMode('gpu_particles');
 
     // Start Master Loop
     this.animate = this.animate.bind(this);
@@ -66,7 +67,7 @@ class PerlinArtApp {
   }
 
   get activeCanvas() {
-    return this.currentModeKey === 'domain_warp' ? this.canvasGL : this.canvas2D;
+    return (this.currentModeKey === 'domain_warp' || this.currentModeKey === 'gpu_particles') ? this.canvasGL : this.canvas2D;
   }
 
   switchMode(modeKey) {
@@ -76,7 +77,7 @@ class PerlinArtApp {
     this.currentMode = this.modes[modeKey];
 
     // Toggle canvas visibility based on mode engine
-    if (modeKey === 'domain_warp') {
+    if (modeKey === 'domain_warp' || modeKey === 'gpu_particles') {
       this.canvasGL.style.display = 'block';
       this.canvas2D.style.display = 'none';
       if (this.webgl) {
@@ -183,8 +184,8 @@ class PerlinArtApp {
 
     // Update Particle count stats
     if (this.controls && this.controls.ui.particleCounter) {
-      if (this.currentModeKey === 'flow') {
-        this.controls.ui.particleCounter.textContent = this.currentMode.params.particleCount.toLocaleString();
+      if (this.currentModeKey === 'flow' || this.currentModeKey === 'gpu_particles') {
+        this.controls.ui.particleCounter.textContent = (this.currentMode.params.particleCount || 0).toLocaleString();
       } else {
         this.controls.ui.particleCounter.textContent = 'N/A';
       }
@@ -193,7 +194,7 @@ class PerlinArtApp {
     // Update & Render Current Mode
     if (this.currentMode) {
       this.currentMode.update(dt, this.time);
-      if (this.currentModeKey === 'domain_warp') {
+      if (this.currentModeKey === 'domain_warp' || this.currentModeKey === 'gpu_particles') {
         this.currentMode.render(this.webgl);
       } else {
         this.currentMode.render(this.renderer2D);
