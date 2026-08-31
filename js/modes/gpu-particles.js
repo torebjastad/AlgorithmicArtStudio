@@ -88,8 +88,16 @@ class GPUParticlesMode {
       }
 
       // Gustavson Fast Simplex Noise 2D (Zero Trig Functions)
+      vec3 permute(vec3 x) {
+        return mod(((x * 34.0) + 1.0) * x, 289.0);
+      }
+
       vec4 permute(vec4 x) {
         return mod(((x * 34.0) + 1.0) * x, 289.0);
+      }
+
+      vec3 taylorInvSqrt(vec3 r) {
+        return 1.79284291400159 - 0.85373472095314 * r;
       }
 
       vec4 taylorInvSqrt(vec4 r) {
@@ -281,6 +289,7 @@ class GPUParticlesMode {
 
     // 3. Framebuffer Background Fade Quad Shader (Motion Trails)
     const fadeVsSource = `#version 300 es
+      precision highp float;
       layout(location = 0) in vec2 a_position;
       void main() {
         gl_Position = vec4(a_position, 0.0, 1.0);
