@@ -201,18 +201,23 @@ class ControlsManager {
   bindDynamicInputs() {
     document.querySelectorAll('[data-param]').forEach(input => {
       const paramKey = input.dataset.param;
-      const badge = document.querySelector(`[data-badge="${paramKey}"]`);
 
       const updateVal = (val) => {
+        const group = input.closest('[data-show-for-mode]');
+        if (group && group.style.display === 'none') return;
+
         const mode = this.app.currentMode;
         if (!mode || !mode.params) return;
+
+        const badge = input.closest('.control-group')?.querySelector('.val-badge') ||
+                      document.querySelector(`[data-badge="${paramKey}"]`);
 
         if (input.type === 'checkbox') {
           mode.params[paramKey] = input.checked;
         } else if (input.type === 'number' || input.type === 'range') {
           const num = parseFloat(val);
           mode.params[paramKey] = num;
-          if (badge) badge.textContent = num < 0.1 ? num.toFixed(4) : (num % 1 === 0 ? num : num.toFixed(2));
+          if (badge) badge.textContent = num < 0.1 ? num.toFixed(4) : (num % 1 === 0 ? num.toLocaleString() : num.toFixed(2));
         } else {
           mode.params[paramKey] = val;
           if (badge) badge.textContent = val;
@@ -320,15 +325,22 @@ class ControlsManager {
       this.ui.modeBadge.textContent = mode.name;
     }
 
+    if (this.ui.modeSelect) {
+      this.ui.modeSelect.value = this.app.currentModeKey;
+    }
+
     // Toggle mode-specific control groups
     document.querySelectorAll('[data-show-for-mode]').forEach(el => {
-      const allowedModes = el.dataset.showForMode.split(',');
+      const allowedModes = el.dataset.showForMode.split(',').map(m => m.trim());
       const currentModeKey = this.app.currentModeKey;
       el.style.display = allowedModes.includes(currentModeKey) ? 'block' : 'none';
     });
 
-    // Sync input values & badges
+    // Sync input values & badges for visible elements
     document.querySelectorAll('[data-param]').forEach(input => {
+      const group = input.closest('[data-show-for-mode]');
+      if (group && group.style.display === 'none') return;
+
       const paramKey = input.dataset.param;
       if (mode.params[paramKey] !== undefined) {
         const val = mode.params[paramKey];
@@ -338,9 +350,10 @@ class ControlsManager {
           input.value = val;
         }
 
-        const badge = document.querySelector(`[data-badge="${paramKey}"]`);
+        const badge = input.closest('.control-group')?.querySelector('.val-badge') ||
+                      document.querySelector(`[data-badge="${paramKey}"]`);
         if (badge) {
-          badge.textContent = typeof val === 'number' ? (val < 0.1 ? val.toFixed(4) : (val % 1 === 0 ? val : val.toFixed(2))) : val;
+          badge.textContent = typeof val === 'number' ? (val < 0.1 ? val.toFixed(4) : (val % 1 === 0 ? val.toLocaleString() : val.toFixed(2))) : val;
         }
       }
     });
