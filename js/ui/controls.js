@@ -139,30 +139,61 @@ class ControlsManager {
     // Sliders & Checkbox Auto-Binding
     this.bindDynamicInputs();
 
-    // Global Keyboard Shortcuts
-    window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    // Global Keyboard Shortcuts (Active across all UI elements, sliders, selects, and buttons)
+    const isTextEditing = (el) => {
+      if (!el) return false;
+      const tag = el.tagName;
+      const type = (el.type || '').toLowerCase();
+      return (
+        (tag === 'INPUT' && (type === 'text' || type === 'number' || type === 'password' || type === 'search' || type === 'email')) ||
+        tag === 'TEXTAREA' ||
+        el.isContentEditable
+      );
+    };
 
-      if (e.code === 'Space') {
-        e.preventDefault();
-        this.togglePlayPause();
-      } else if (e.key === 'Tab' || e.key === 'h' || e.key === 'H') {
-        e.preventDefault();
-        this.toggleHUD();
-      } else if (e.key === 'f' || e.key === 'F') {
-        this.toggleFullscreen();
-      } else if (e.key === 'r' || e.key === 'R') {
-        this.randomizeParameters();
-      } else if (e.key === 'c' || e.key === 'C') {
-        this.app.resetCurrentMode();
-      } else if (e.key === 's' || e.key === 'S') {
-        this.app.exporter.exportImage({ width: 1920, height: 1080 });
-      } else if (e.key === 'Escape') {
+    window.addEventListener('keydown', (e) => {
+      const editing = isTextEditing(e.target);
+
+      // Escape always works to close modals or unblur active inputs
+      if (e.key === 'Escape') {
+        if (editing && e.target && typeof e.target.blur === 'function') {
+          e.target.blur();
+        }
         this.ui.exportModal.classList.remove('active');
         this.ui.infoModal.classList.remove('active');
         if (this.ui.hud && this.ui.hud.classList.contains('hidden')) {
           this.toggleHUD();
         }
+        return;
+      }
+
+      // If user is actively typing in a text/numeric input box, let them type
+      if (editing) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (e.target && typeof e.target.blur === 'function') {
+          e.target.blur();
+        }
+        this.togglePlayPause();
+      } else if (e.key === 'Tab' || e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        if (e.target && typeof e.target.blur === 'function') {
+          e.target.blur();
+        }
+        this.toggleHUD();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        this.toggleFullscreen();
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        this.randomizeParameters();
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        this.app.resetCurrentMode();
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        this.app.exporter.exportImage({ width: 1920, height: 1080 });
       }
     });
   }
