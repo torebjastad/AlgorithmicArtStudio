@@ -1,7 +1,7 @@
 /**
- * WebGL2 GPU Transform Feedback Particle Engine
+ * WebGL2 GPU Transform Feedback Particle & Streamline Engine
  * Simulates 100,000 to 1,000,000+ particles at 60-144 FPS
- * 100% computed on GPU via GLSL Vertex Shaders & Transform Feedback.
+ * 100% computed on GPU via GLSL Vertex Shaders & Ping-Pong VBOs.
  */
 
 class GPUParticlesMode {
@@ -10,20 +10,20 @@ class GPUParticlesMode {
     this.name = '⚡ GPU Cosmic Particles (1M+)';
 
     this.params = {
-      particleCount: 300000,
+      particleCount: 350000,
       noiseType: 'curl',     // 'curl', 'perlin', 'simplex', 'vortex'
-      noiseScale: 0.003,
+      noiseScale: 0.0028,
       octaves: 3,
       persistence: 0.5,
       lacunarity: 2.0,
       timeSpeed: 0.003,
-      particleSpeed: 2.5,
-      pointSize: 2.5,
+      particleSpeed: 3.5,    // Fast, responsive flow speed
+      streakLength: 4.5,     // Dynamic velocity comet tail length
       glowAlpha: 0.85,
       enableMouse: false,
       mouseForce: 'attract', // 'attract', 'repel', 'swirl'
-      mouseRadius: 200,
-      mouseStrength: 3.0
+      mouseRadius: 220,
+      mouseStrength: 3.5
     };
 
     this.maxParticles = 1000000;
@@ -110,16 +110,18 @@ class GPUParticlesMode {
       }
 
       vec2 getCurl(vec2 p, float t) {
-        float eps = 0.01;
-        float n1 = fbm(p + vec2(0.0, eps) + t * 0.1);
-        float n2 = fbm(p - vec2(0.0, eps) + t * 0.1);
-        float n3 = fbm(p + vec2(eps, 0.0) + t * 0.1);
-        float n4 = fbm(p - vec2(eps, 0.0) + t * 0.1);
+        float eps = 0.005;
+        float n1 = fbm(p + vec2(0.0, eps) + t * 0.08);
+        float n2 = fbm(p - vec2(0.0, eps) + t * 0.08);
+        float n3 = fbm(p + vec2(eps, 0.0) + t * 0.08);
+        float n4 = fbm(p - vec2(eps, 0.0) + t * 0.08);
 
         float dPsiDy = (n1 - n2) / (2.0 * eps);
         float dPsiDx = (n3 - n4) / (2.0 * eps);
 
-        return vec2(dPsiDy, -dPsiDx);
+        vec2 c = vec2(dPsiDy, -dPsiDx);
+        float len = length(c);
+        return len > 0.0001 ? (c / len) : vec2(1.0, 0.0);
       }
 
       void main() {
@@ -130,12 +132,12 @@ class GPUParticlesMode {
         vec2 seed = a_vel_seed.zw;
 
         // Respawn if expired or out of bounds
-        if (age >= maxLife || pos.x < -30.0 || pos.x > u_resolution.x + 30.0 || pos.y < -30.0 || pos.y > u_resolution.y + 30.0) {
+        if (age >= maxLife || pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0) {
           pos = vec2(hash3(seed + vec2(u_time, 1.13)).x * u_resolution.x,
                      hash3(seed + vec2(u_time, 2.71)).y * u_resolution.y);
           vel = vec2(0.0);
           age = 0.0;
-          maxLife = 60.0 + hash3(seed + vec2(u_time, 3.47)).z * 160.0;
+          maxLife = 70.0 + hash3(seed + vec2(u_time, 3.47)).z * 180.0;
           seed += vec2(0.191, 0.373);
         }
 
@@ -143,22 +145,22 @@ class GPUParticlesMode {
         vec2 targetVel = vec2(0.0);
 
         if (u_noiseType == 0) {
-          // Divergence-Free Curl Noise
-          targetVel = getCurl(np, u_time) * u_particleSpeed * 2.6;
+          // Divergence-Free Normalized Curl Flow
+          targetVel = getCurl(np, u_time) * u_particleSpeed * 2.8;
         } else if (u_noiseType == 1) {
           // Perlin Angle
           float angle = fbm(np + vec2(0.05, 0.05) * u_time) * 6.2831853 * 2.0;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
+          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
         } else if (u_noiseType == 3) {
           // Vortex Spiral
           vec2 center = u_resolution * 0.5;
           float dist = length(pos - center);
           float angle = fbm(np + vec2(0.05, 0.05) * u_time) * 6.2831853 + dist * 0.005;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
+          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
         } else {
           // Simplex
           float angle = fbm(np * 1.5 + vec2(0.04, 0.04) * u_time) * 6.2831853 * 2.0;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
+          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
         }
 
         // Interactive Mouse Forces
@@ -167,13 +169,14 @@ class GPUParticlesMode {
           float dist = length(diff);
           if (dist < u_mouseRadius && dist > 1.0) {
             float factor = (1.0 - dist / u_mouseRadius) * u_mouseStrength;
-            if (u_mouseForce == 0) targetVel += normalize(diff) * factor * 5.0;
-            else if (u_mouseForce == 1) targetVel -= normalize(diff) * factor * 7.0;
-            else if (u_mouseForce == 2) targetVel += vec2(-diff.y, diff.x) / dist * factor * 7.0;
+            if (u_mouseForce == 0) targetVel += normalize(diff) * factor * 6.0;
+            else if (u_mouseForce == 1) targetVel -= normalize(diff) * factor * 8.0;
+            else if (u_mouseForce == 2) targetVel += vec2(-diff.y, diff.x) / dist * factor * 8.0;
           }
         }
 
-        vel = mix(vel, targetVel, 0.18);
+        // Responsive velocity inertia
+        vel = mix(vel, targetVel, 0.22);
         pos += vel;
 
         v_pos_life = vec4(pos, age, maxLife);
@@ -200,28 +203,35 @@ class GPUParticlesMode {
     gl.transformFeedbackVaryings(this.simProgram, varyings, gl.SEPARATE_ATTRIBS);
     gl.linkProgram(this.simProgram);
 
-    // 2. High-Performance Point Glow Render Shader
+    // 2. High-Performance Instanced Streamline Shader (gl.LINES)
     const renderVsSource = `#version 300 es
       precision highp float;
 
-      layout(location = 0) in vec4 a_pos_life;
-      layout(location = 1) in vec4 a_vel_seed;
+      layout(location = 0) in float a_t;        // 0.0 (tail) or 1.0 (head)
+      layout(location = 1) in vec4 i_pos_life;  // xy: pos, z: age, w: maxLife
+      layout(location = 2) in vec4 i_vel_seed;  // xy: vel, zw: seed
 
       out float v_alpha;
       out float v_colorT;
 
       uniform vec2 u_resolution;
-      uniform float u_pointSize;
+      uniform float u_streakLength;
 
       void main() {
-        vec2 p = a_pos_life.xy;
+        vec2 pos = i_pos_life.xy;
+        vec2 vel = i_vel_seed.xy;
+        
+        vec2 tail = pos - vel * u_streakLength;
+        vec2 head = pos + vel * 0.3;
+        vec2 p = mix(tail, head, a_t);
+
         vec2 clipSpace = (p / u_resolution) * 2.0 - 1.0;
         gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
 
-        float lifeRatio = clamp(a_pos_life.z / a_pos_life.w, 0.0, 1.0);
-        v_alpha = sin(lifeRatio * 3.14159265);
-        v_colorT = fract(lifeRatio + length(a_vel_seed.xy) * 0.08);
-        gl_PointSize = max(1.0, u_pointSize * (0.8 + 0.5 * v_alpha));
+        float lifeRatio = clamp(i_pos_life.z / i_pos_life.w, 0.0, 1.0);
+        float lifeAlpha = sin(lifeRatio * 3.14159265);
+        v_alpha = lifeAlpha * (0.15 + 0.85 * a_t);
+        v_colorT = fract(lifeRatio + length(vel) * 0.04);
       }
     `;
 
@@ -243,13 +253,8 @@ class GPUParticlesMode {
       }
 
       void main() {
-        vec2 coord = gl_PointCoord - vec2(0.5);
-        float distSq = dot(coord, coord);
-        if (distSq > 0.25) discard;
-        float pointGlow = exp(-distSq * 9.0);
-
         vec3 col = cosinePalette(v_colorT);
-        fragColor = vec4(col * (pointGlow * v_alpha * u_glowAlpha), 1.0);
+        fragColor = vec4(col * (v_alpha * u_glowAlpha), 1.0);
       }
     `;
 
@@ -268,13 +273,18 @@ class GPUParticlesMode {
     const w = this.app.width || window.innerWidth;
     const h = this.app.height || window.innerHeight;
 
+    // Unit Line Vertex Buffer [0.0, 1.0]
+    this.lineVbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.lineVbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0.0, 1.0]), gl.STATIC_DRAW);
+
     const posLifeData = new Float32Array(n * 4);
     const velSeedData = new Float32Array(n * 4);
 
     for (let i = 0; i < n; i++) {
       const rx = Math.random() * w;
       const ry = Math.random() * h;
-      const maxLife = 60 + Math.random() * 180;
+      const maxLife = 70 + Math.random() * 180;
       const age = Math.random() * maxLife;
 
       posLifeData[i * 4] = rx;
@@ -290,7 +300,8 @@ class GPUParticlesMode {
 
     this.posLifeBuffers = [gl.createBuffer(), gl.createBuffer()];
     this.velSeedBuffers = [gl.createBuffer(), gl.createBuffer()];
-    this.vaos = [gl.createVertexArray(), gl.createVertexArray()];
+    this.simVaos = [gl.createVertexArray(), gl.createVertexArray()];
+    this.renderVaos = [gl.createVertexArray(), gl.createVertexArray()];
     this.tfs = [gl.createTransformFeedback(), gl.createTransformFeedback()];
 
     for (let i = 0; i < 2; i++) {
@@ -300,7 +311,8 @@ class GPUParticlesMode {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.velSeedBuffers[i]);
       gl.bufferData(gl.ARRAY_BUFFER, velSeedData, gl.DYNAMIC_COPY);
 
-      gl.bindVertexArray(this.vaos[i]);
+      // Simulation VAO
+      gl.bindVertexArray(this.simVaos[i]);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, this.posLifeBuffers[i]);
       gl.enableVertexAttribArray(0);
@@ -310,9 +322,31 @@ class GPUParticlesMode {
       gl.enableVertexAttribArray(1);
       gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
 
+      // Transform Feedback target
       gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, this.tfs[i]);
       gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, this.posLifeBuffers[i]);
       gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, this.velSeedBuffers[i]);
+
+      // Render VAO (Instanced Lines)
+      gl.bindVertexArray(this.renderVaos[i]);
+
+      // Base line [0, 1]
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.lineVbo);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 1, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(0, 0);
+
+      // Instance pos_life
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.posLifeBuffers[i]);
+      gl.enableVertexAttribArray(1);
+      gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(1, 1);
+
+      // Instance vel_seed
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.velSeedBuffers[i]);
+      gl.enableVertexAttribArray(2);
+      gl.vertexAttribPointer(2, 4, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribDivisor(2, 1);
     }
 
     gl.bindVertexArray(null);
@@ -324,7 +358,7 @@ class GPUParticlesMode {
   }
 
   update(dt, time) {
-    // Handled in GPU pass
+    // Handled in GPU render pass
   }
 
   render(renderer) {
@@ -371,7 +405,7 @@ class GPUParticlesMode {
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_mouseStrength'), p.mouseStrength);
 
     // Run GPU physics
-    gl.bindVertexArray(this.vaos[this.readIndex]);
+    gl.bindVertexArray(this.simVaos[this.readIndex]);
     gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, this.tfs[this.writeIndex]);
 
     gl.beginTransformFeedback(gl.POINTS);
@@ -383,7 +417,7 @@ class GPUParticlesMode {
     gl.disable(gl.RASTERIZER_DISCARD);
 
     // ==========================================
-    // STEP 2: Render Particle Points to Screen
+    // STEP 2: Render Instanced Streamlines to Screen
     // ==========================================
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, w, h);
@@ -391,7 +425,7 @@ class GPUParticlesMode {
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE); // Premultiplied additive light
+    gl.blendFunc(gl.ONE, gl.ONE); // Premultiplied additive glow
 
     const bgRgb = palette.hexToRGB(palette.customBg);
     gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
@@ -399,15 +433,15 @@ class GPUParticlesMode {
 
     gl.useProgram(this.renderProgram);
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_pointSize'), p.pointSize * (this.app.webgl.dpr || 1));
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_streakLength'), p.streakLength);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), p.glowAlpha);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palA'), cosParams.a[0], cosParams.a[1], cosParams.a[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palB'), cosParams.b[0], cosParams.b[1], cosParams.b[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palC'), cosParams.c[0], cosParams.c[1], cosParams.c[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palD'), cosParams.d[0], cosParams.d[1], cosParams.d[2]);
 
-    gl.bindVertexArray(this.vaos[this.writeIndex]);
-    gl.drawArrays(gl.POINTS, 0, count);
+    gl.bindVertexArray(this.renderVaos[this.writeIndex]);
+    gl.drawArraysInstanced(gl.LINES, 0, 2, count);
     gl.bindVertexArray(null);
 
     gl.disable(gl.BLEND);

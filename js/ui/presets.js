@@ -14,8 +14,8 @@ const ART_PRESETS = [
       noiseType: 'curl',
       noiseScale: 0.0025,
       octaves: 3,
-      particleSpeed: 2.2,
-      pointSize: 2.4,
+      particleSpeed: 3.6,
+      streakLength: 4.5,
       glowAlpha: 0.85,
       timeSpeed: 0.0025
     }
@@ -30,8 +30,8 @@ const ART_PRESETS = [
       noiseType: 'vortex',
       noiseScale: 0.0032,
       octaves: 4,
-      particleSpeed: 2.8,
-      pointSize: 1.8,
+      particleSpeed: 4.2,
+      streakLength: 5.0,
       glowAlpha: 0.8,
       timeSpeed: 0.003
     }
@@ -46,8 +46,8 @@ const ART_PRESETS = [
       noiseType: 'curl',
       noiseScale: 0.004,
       octaves: 4,
-      particleSpeed: 2.4,
-      pointSize: 2.8,
+      particleSpeed: 3.8,
+      streakLength: 4.0,
       glowAlpha: 0.9,
       timeSpeed: 0.0028
     }
