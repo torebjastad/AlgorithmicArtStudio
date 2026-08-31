@@ -1,7 +1,7 @@
 /**
  * WebGL2 GPU Transform Feedback Particle & Streamline Engine
  * Simulates 100,000 to 1,000,000+ particles at 60-144 FPS
- * 100% computed on GPU via GLSL Vertex Shaders, Instanced Streamlines & Framebuffer Trails.
+ * 100% computed on GPU via GLSL Vertex Shaders & Ping-Pong VBOs.
  */
 
 class GPUParticlesMode {
@@ -10,17 +10,17 @@ class GPUParticlesMode {
     this.name = '⚡ GPU Cosmic Particles (1M+)';
 
     this.params = {
-      particleCount: 250000,
+      particleCount: 300000,
       noiseType: 'curl',     // 'curl', 'perlin', 'simplex', 'vortex'
       noiseScale: 0.003,
       octaves: 3,
       persistence: 0.5,
       lacunarity: 2.0,
-      timeSpeed: 0.0025,
-      particleSpeed: 2.2,
-      strokeWidth: 1.5,
-      fadeRate: 0.04,
-      glowAlpha: 0.7,
+      timeSpeed: 0.003,
+      particleSpeed: 2.5,
+      streakLength: 3.5,
+      pointSize: 2.0,
+      glowAlpha: 0.8,
       enableMouse: false,
       mouseForce: 'attract', // 'attract', 'repel', 'swirl'
       mouseRadius: 200,
@@ -30,7 +30,6 @@ class GPUParticlesMode {
     this.maxParticles = 1000000;
     this.readIndex = 0;
     this.writeIndex = 1;
-    this.fboIndex = 0;
     this.initialized = false;
 
     this.initGL();
@@ -39,27 +38,26 @@ class GPUParticlesMode {
   initGL() {
     const gl = this.app.webgl.gl;
     if (!gl || !this.app.webgl.isWebGL2) {
-      console.warn('WebGL2 required for GPU Transform Feedback Particles');
+      console.warn('WebGL2 is required for GPU Transform Feedback Particles');
       return;
     }
 
     this.initShaders();
     this.initBuffers();
-    this.initFramebuffers();
     this.initialized = true;
   }
 
   initShaders() {
     const gl = this.app.webgl.gl;
 
-    // 1. Transform Feedback Simulation Vertex Shader
+    // 1. Transform Feedback Simulation Vertex Shader (Runs on GPU)
     const simVsSource = `#version 300 es
       precision highp float;
 
       layout(location = 0) in vec2 a_pos;
       layout(location = 1) in vec2 a_prev;
       layout(location = 2) in vec2 a_vel;
-      layout(location = 3) in vec2 a_life; // x: currentLife, y: maxLife
+      layout(location = 3) in vec2 a_life; // x: age, y: maxLife
       layout(location = 4) in vec2 a_seed;
 
       out vec2 v_pos;
@@ -140,15 +138,15 @@ class GPUParticlesMode {
 
         life.x += 1.0;
 
-        // Respawn if expired or outside canvas bounds
-        if (life.x >= life.y || pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0) {
+        // Respawn if life expired or out of bounds
+        if (life.x >= life.y || pos.x < -30.0 || pos.x > u_resolution.x + 30.0 || pos.y < -30.0 || pos.y > u_resolution.y + 30.0) {
           pos = vec2(hash3(seed + vec2(u_time, 1.0)).x * u_resolution.x,
                      hash3(seed + vec2(u_time, 2.0)).y * u_resolution.y);
           prev = pos;
           vel = vec2(0.0);
           life.x = 0.0;
-          life.y = 70.0 + hash3(seed + vec2(u_time, 3.0)).z * 180.0;
-          seed += vec2(0.17, 0.31);
+          life.y = 80.0 + hash3(seed + vec2(u_time, 3.0)).z * 160.0;
+          seed += vec2(0.19, 0.37);
         }
 
         vec2 np = pos * u_noiseScale;
@@ -156,16 +154,16 @@ class GPUParticlesMode {
 
         if (u_noiseType == 0) {
           // Divergence-Free Curl Noise
-          targetVel = getCurl(np, u_time) * u_particleSpeed * 2.8;
+          targetVel = getCurl(np, u_time) * u_particleSpeed * 2.6;
         } else if (u_noiseType == 1) {
           // Perlin Angle
           float angle = fbm(np + vec2(0.05, 0.05) * u_time) * 6.2831853 * 2.0;
           targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
         } else if (u_noiseType == 3) {
-          // Vortex
+          // Vortex Spiral
           vec2 center = u_resolution * 0.5;
           float dist = length(pos - center);
-          float angle = fbm(np + vec2(0.05, 0.05) * u_time) * 6.2831853 + dist * 0.004;
+          float angle = fbm(np + vec2(0.05, 0.05) * u_time) * 6.2831853 + dist * 0.005;
           targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
         } else {
           // Simplex
@@ -173,7 +171,7 @@ class GPUParticlesMode {
           targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed;
         }
 
-        // Mouse interactive forces
+        // Mouse Interactive Forces
         if (u_enableMouse) {
           vec2 diff = u_mouse - pos;
           float dist = length(diff);
@@ -189,7 +187,7 @@ class GPUParticlesMode {
           }
         }
 
-        vel = mix(vel, targetVel, 0.15);
+        vel = mix(vel, targetVel, 0.16);
         pos += vel;
 
         v_pos = pos;
@@ -219,14 +217,17 @@ class GPUParticlesMode {
     gl.transformFeedbackVaryings(this.simProgram, varyings, gl.SEPARATE_ATTRIBS);
     gl.linkProgram(this.simProgram);
 
-    // 2. Instanced Streamline Streak Render Shader (gl.LINES per particle)
+    if (!gl.getProgramParameter(this.simProgram, gl.LINK_STATUS)) {
+      console.error('Transform feedback program linking error:', gl.getProgramInfoLog(this.simProgram));
+    }
+
+    // 2. High-Performance Instanced Line Streak Shader
     const lineVsSource = `#version 300 es
       precision highp float;
 
-      // Base line segment vertex [0 or 1]
-      layout(location = 0) in float a_t;
+      layout(location = 0) in float a_t; // 0.0 or 1.0
 
-      // Instanced particle attributes
+      // Instanced per-particle attributes
       layout(location = 1) in vec2 i_pos;
       layout(location = 2) in vec2 i_prev;
       layout(location = 3) in vec2 i_vel;
@@ -236,15 +237,20 @@ class GPUParticlesMode {
       out float v_colorT;
 
       uniform vec2 u_resolution;
+      uniform float u_streakLength;
 
       void main() {
-        vec2 p = mix(i_prev, i_pos, a_t);
+        // Compute extended streak from tail to head
+        vec2 tail = i_pos - i_vel * u_streakLength;
+        vec2 head = i_pos;
+        vec2 p = mix(tail, head, a_t);
+
         vec2 clipSpace = (p / u_resolution) * 2.0 - 1.0;
-        gl_Position = vec4(clipSpace * vec2(1.0, -1.0), 0.0, 1.0);
+        gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
 
         float lifeRatio = clamp(i_life.x / i_life.y, 0.0, 1.0);
         float lifeAlpha = sin(lifeRatio * 3.14159265);
-        v_alpha = lifeAlpha * (0.3 + 0.7 * a_t);
+        v_alpha = lifeAlpha * (0.2 + 0.8 * a_t);
         v_colorT = fract(lifeRatio + length(i_vel) * 0.1);
       }
     `;
@@ -273,43 +279,15 @@ class GPUParticlesMode {
 
     const lineVs = this.app.webgl.compileShader(lineVsSource, gl.VERTEX_SHADER);
     const lineFs = this.app.webgl.compileShader(lineFsSource, gl.FRAGMENT_SHADER);
+    
     this.lineProgram = gl.createProgram();
     gl.attachShader(this.lineProgram, lineVs);
     gl.attachShader(this.lineProgram, lineFs);
     gl.linkProgram(this.lineProgram);
 
-    // 3. Motion Trail Blit & Fade Shader
-    const trailVsSource = `#version 300 es
-      layout(location = 0) in vec2 a_position;
-      out vec2 v_uv;
-      void main() {
-        v_uv = (a_position + 1.0) * 0.5;
-        gl_Position = vec4(a_position, 0.0, 1.0);
-      }
-    `;
-
-    const trailFsSource = `#version 300 es
-      precision highp float;
-      in vec2 v_uv;
-      out vec4 fragColor;
-      uniform sampler2D u_prevTrail;
-      uniform float u_fadeRate;
-      uniform vec3 u_bgColor;
-
-      void main() {
-        vec4 prev = texture(u_prevTrail, v_uv);
-        // Progressive decay towards background color
-        vec3 col = mix(prev.rgb, u_bgColor, clamp(u_fadeRate, 0.0, 1.0));
-        fragColor = vec4(col, 1.0);
-      }
-    `;
-
-    const trailVs = this.app.webgl.compileShader(trailVsSource, gl.VERTEX_SHADER);
-    const trailFs = this.app.webgl.compileShader(trailFsSource, gl.FRAGMENT_SHADER);
-    this.trailProgram = gl.createProgram();
-    gl.attachShader(this.trailProgram, trailVs);
-    gl.attachShader(this.trailProgram, trailFs);
-    gl.linkProgram(this.trailProgram);
+    if (!gl.getProgramParameter(this.lineProgram, gl.LINK_STATUS)) {
+      console.error('Line program linking error:', gl.getProgramInfoLog(this.lineProgram));
+    }
   }
 
   initBuffers() {
@@ -318,30 +296,12 @@ class GPUParticlesMode {
     const w = this.app.width || window.innerWidth;
     const h = this.app.height || window.innerHeight;
 
-    // Quad Buffer for Trail Blit & Fade
-    this.quadVbo = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadVbo);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      -1, -1,
-       1, -1,
-      -1,  1,
-      -1,  1,
-       1, -1,
-       1,  1
-    ]), gl.STATIC_DRAW);
-
-    this.quadVao = gl.createVertexArray();
-    gl.bindVertexArray(this.quadVao);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    gl.bindVertexArray(null);
-
-    // Unit Line Vertex Buffer [0.0, 1.0]
+    // Line unit segment [0.0, 1.0]
     this.lineVbo = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.lineVbo);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0.0, 1.0]), gl.STATIC_DRAW);
 
-    // Initial Data
+    // Initial Particle Buffers
     const posData = new Float32Array(n * 2);
     const prevData = new Float32Array(n * 2);
     const velData = new Float32Array(n * 2);
@@ -357,7 +317,7 @@ class GPUParticlesMode {
       prevData[i * 2 + 1] = ry;
       velData[i * 2] = 0;
       velData[i * 2 + 1] = 0;
-      const maxLife = 60 + Math.random() * 160;
+      const maxLife = 70 + Math.random() * 180;
       lifeData[i * 2] = Math.random() * maxLife;
       lifeData[i * 2 + 1] = maxLife;
       seedData[i * 2] = Math.random();
@@ -375,7 +335,6 @@ class GPUParticlesMode {
     this.seedBuffers = [gl.createBuffer(), gl.createBuffer()];
 
     for (let i = 0; i < 2; i++) {
-      // Allocate VBOs
       gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffers[i]);
       gl.bufferData(gl.ARRAY_BUFFER, posData, gl.DYNAMIC_COPY);
 
@@ -414,7 +373,7 @@ class GPUParticlesMode {
       gl.enableVertexAttribArray(4);
       gl.vertexAttribPointer(4, 2, gl.FLOAT, false, 0, 0);
 
-      // Transform Feedback target
+      // Transform Feedback Binding
       gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, this.transformFeedbacks[i]);
       gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, this.posBuffers[i]);
       gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, this.prevBuffers[i]);
@@ -425,30 +384,28 @@ class GPUParticlesMode {
       // Render VAO (Instanced Streamline Lines)
       gl.bindVertexArray(this.renderVaos[i]);
 
-      // Base line vertex
       gl.bindBuffer(gl.ARRAY_BUFFER, this.lineVbo);
-      gl.enableVertexAttribArray(0);
+      gl.enableVertexAttribArray(0); // a_t
       gl.vertexAttribPointer(0, 1, gl.FLOAT, false, 0, 0);
       gl.vertexAttribDivisor(0, 0);
 
-      // Instance attributes
       gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffers[i]);
-      gl.enableVertexAttribArray(1);
+      gl.enableVertexAttribArray(1); // i_pos
       gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
       gl.vertexAttribDivisor(1, 1);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, this.prevBuffers[i]);
-      gl.enableVertexAttribArray(2);
+      gl.enableVertexAttribArray(2); // i_prev
       gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
       gl.vertexAttribDivisor(2, 1);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, this.velBuffers[i]);
-      gl.enableVertexAttribArray(3);
+      gl.enableVertexAttribArray(3); // i_vel
       gl.vertexAttribPointer(3, 2, gl.FLOAT, false, 0, 0);
       gl.vertexAttribDivisor(3, 1);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, this.lifeBuffers[i]);
-      gl.enableVertexAttribArray(4);
+      gl.enableVertexAttribArray(4); // i_life
       gl.vertexAttribPointer(4, 2, gl.FLOAT, false, 0, 0);
       gl.vertexAttribDivisor(4, 1);
     }
@@ -457,43 +414,12 @@ class GPUParticlesMode {
     gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
   }
 
-  initFramebuffers() {
-    const gl = this.app.webgl.gl;
-    const w = Math.max(1, this.app.webgl.canvas.width);
-    const h = Math.max(1, this.app.webgl.canvas.height);
-
-    this.trailTextures = [gl.createTexture(), gl.createTexture()];
-    this.trailFbos = [gl.createFramebuffer(), gl.createFramebuffer()];
-
-    const palette = this.app.palette;
-    const bgRgb = palette.hexToRGB(palette.customBg);
-
-    for (let i = 0; i < 2; i++) {
-      gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[i]);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.trailFbos[i]);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.trailTextures[i], 0);
-
-      gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-    }
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    this.fboIndex = 0;
-  }
-
   resetAllParticles() {
     this.initBuffers();
-    this.initFramebuffers();
   }
 
   update(dt, time) {
-    // GPU Transform feedback physics run inside render()
+    // Handled in GPU render pass
   }
 
   render(renderer) {
@@ -540,7 +466,7 @@ class GPUParticlesMode {
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_mouseRadius'), p.mouseRadius);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_mouseStrength'), p.mouseStrength);
 
-    // Run GPU physics pass
+    // Bind Read VAO and Write Transform Feedback Buffer
     gl.bindVertexArray(this.simVaos[this.readIndex]);
     gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, this.transformFeedbacks[this.writeIndex]);
 
@@ -553,36 +479,21 @@ class GPUParticlesMode {
     gl.disable(gl.RASTERIZER_DISCARD);
 
     // ==========================================
-    // STEP 2: Render Streamlines to Trail FBO
+    // STEP 2: Render Instanced Streamlines to Screen
     // ==========================================
-    const readFboIdx = this.fboIndex;
-    const writeFboIdx = 1 - this.fboIndex;
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.trailFbos[writeFboIdx]);
-    gl.viewport(0, 0, w, h);
-
-    // 2a. Fade previous trail texture
-    gl.disable(gl.BLEND);
-    gl.useProgram(this.trailProgram);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[readFboIdx]);
-    gl.uniform1i(gl.getUniformLocation(this.trailProgram, 'u_prevTrail'), 0);
-    gl.uniform1f(gl.getUniformLocation(this.trailProgram, 'u_fadeRate'), p.fadeRate);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     const bgRgb = palette.hexToRGB(palette.customBg);
-    gl.uniform3f(gl.getUniformLocation(this.trailProgram, 'u_bgColor'), bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255);
+    gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // Fullscreen quad fade
-    gl.bindVertexArray(this.quadVao);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-    gl.bindVertexArray(null);
-
-    // 2b. Additive Streamlines
+    // Additive alpha blending for luminous filaments
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 
     gl.useProgram(this.lineProgram);
     gl.uniform2f(gl.getUniformLocation(this.lineProgram, 'u_resolution'), this.app.width, this.app.height);
+    gl.uniform1f(gl.getUniformLocation(this.lineProgram, 'u_streakLength'), p.streakLength);
     gl.uniform1f(gl.getUniformLocation(this.lineProgram, 'u_glowAlpha'), p.glowAlpha);
     gl.uniform3f(gl.getUniformLocation(this.lineProgram, 'u_palA'), cosParams.a[0], cosParams.a[1], cosParams.a[2]);
     gl.uniform3f(gl.getUniformLocation(this.lineProgram, 'u_palB'), cosParams.b[0], cosParams.b[1], cosParams.b[2]);
@@ -595,29 +506,10 @@ class GPUParticlesMode {
 
     gl.disable(gl.BLEND);
 
-    // ==========================================
-    // STEP 3: Blit Trail Texture to Screen
-    // ==========================================
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, w, h);
-
-    gl.useProgram(this.trailProgram);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[writeFboIdx]);
-    gl.uniform1i(gl.getUniformLocation(this.trailProgram, 'u_prevTrail'), 0);
-    gl.uniform1f(gl.getUniformLocation(this.trailProgram, 'u_fadeRate'), 0.0); // No fade when presenting to screen
-    gl.uniform3f(gl.getUniformLocation(this.trailProgram, 'u_bgColor'), bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255);
-
-    gl.bindVertexArray(this.quadVao);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-    gl.bindVertexArray(null);
-
-    // Swap indices
+    // Swap Ping-Pong buffer indices
     const temp = this.readIndex;
     this.readIndex = this.writeIndex;
     this.writeIndex = temp;
-
-    this.fboIndex = writeFboIdx;
   }
 
   async renderToCanvas(targetCanvas, width, height) {
