@@ -54,7 +54,7 @@ class FlowFieldMode {
 
   resetParticle(i, w, h) {
     if (this.params.spawnMode === 'edges') {
-      const margin = 12;
+      const margin = 2.5;
       const totalW = w + 2 * margin;
       const totalH = h + 2 * margin;
       const perimeter = 2 * (totalW + totalH);

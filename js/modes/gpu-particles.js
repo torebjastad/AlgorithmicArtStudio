@@ -110,8 +110,8 @@ class GPUParticlesMode {
 
       vec2 getSpawnPos(vec2 rnd, vec2 res, int mode) {
         if (mode == 1) {
-          // Spawn outside visible viewport boundary (-12px) to eliminate outward-flowing edge stubs
-          float margin = 12.0;
+          // Spawn tightly along the outer boundary (-2.5px)
+          float margin = 2.5;
           float totalW = res.x + 2.0 * margin;
           float totalH = res.y + 2.0 * margin;
           float perimeter = 2.0 * (totalW + totalH);
@@ -404,7 +404,7 @@ class GPUParticlesMode {
     for (let i = 0; i < totalParticles; i++) {
       let rx, ry;
       if (this.params.spawnMode === 'edges') {
-        const margin = 12;
+        const margin = 2.5;
         const totalW = w + 2 * margin;
         const totalH = h + 2 * margin;
         const perimeter = 2 * (totalW + totalH);
