@@ -110,17 +110,20 @@ class GPUParticlesMode {
 
       vec2 getSpawnPos(vec2 rnd, vec2 res, int mode) {
         if (mode == 1) {
-          // Edges / Perimeter Only (spawns on border with inset)
-          float perimeter = 2.0 * (res.x + res.y);
+          // Spawn outside visible viewport boundary (-12px) to eliminate outward-flowing edge stubs
+          float margin = 12.0;
+          float totalW = res.x + 2.0 * margin;
+          float totalH = res.y + 2.0 * margin;
+          float perimeter = 2.0 * (totalW + totalH);
           float d = rnd.x * perimeter;
-          if (d < res.x) {
-            return vec2(d, 2.0);
-          } else if (d < res.x + res.y) {
-            return vec2(res.x - 2.0, d - res.x);
-          } else if (d < 2.0 * res.x + res.y) {
-            return vec2(d - (res.x + res.y), res.y - 2.0);
+          if (d < totalW) {
+            return vec2(-margin + d, -margin);
+          } else if (d < totalW + totalH) {
+            return vec2(res.x + margin, -margin + (d - totalW));
+          } else if (d < 2.0 * totalW + totalH) {
+            return vec2(res.x + margin - (d - (totalW + totalH)), res.y + margin);
           } else {
-            return vec2(2.0, d - (2.0 * res.x + res.y));
+            return vec2(-margin, res.y + margin - (d - (2.0 * totalW + totalH)));
           }
         } else if (mode == 2) {
           // Center Core Burst
@@ -401,12 +404,15 @@ class GPUParticlesMode {
     for (let i = 0; i < totalParticles; i++) {
       let rx, ry;
       if (this.params.spawnMode === 'edges') {
-        const perimeter = 2 * (w + h);
+        const margin = 12;
+        const totalW = w + 2 * margin;
+        const totalH = h + 2 * margin;
+        const perimeter = 2 * (totalW + totalH);
         const d = Math.random() * perimeter;
-        if (d < w) { rx = d; ry = 2; }
-        else if (d < w + h) { rx = w - 2; ry = d - w; }
-        else if (d < 2 * w + h) { rx = d - (w + h); ry = h - 2; }
-        else { rx = 2; ry = d - (2 * w + h); }
+        if (d < totalW) { rx = -margin + d; ry = -margin; }
+        else if (d < totalW + totalH) { rx = w + margin; ry = -margin + (d - totalW); }
+        else if (d < 2 * totalW + totalH) { rx = w + margin - (d - (totalW + totalH)); ry = h + margin; }
+        else { rx = -margin; ry = h + margin - (d - (2 * totalW + totalH)); }
       } else if (this.params.spawnMode === 'center') {
         rx = w * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
         ry = h * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;

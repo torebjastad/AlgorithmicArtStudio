@@ -54,12 +54,15 @@ class FlowFieldMode {
 
   resetParticle(i, w, h) {
     if (this.params.spawnMode === 'edges') {
-      const perimeter = 2 * (w + h);
+      const margin = 12;
+      const totalW = w + 2 * margin;
+      const totalH = h + 2 * margin;
+      const perimeter = 2 * (totalW + totalH);
       const d = Math.random() * perimeter;
-      if (d < w) { this.x[i] = d; this.y[i] = 0; }
-      else if (d < w + h) { this.x[i] = w; this.y[i] = d - w; }
-      else if (d < 2 * w + h) { this.x[i] = d - (w + h); this.y[i] = h; }
-      else { this.x[i] = 0; this.y[i] = d - (2 * w + h); }
+      if (d < totalW) { this.x[i] = -margin + d; this.y[i] = -margin; }
+      else if (d < totalW + totalH) { this.x[i] = w + margin; this.y[i] = -margin + (d - totalW); }
+      else if (d < 2 * totalW + totalH) { this.x[i] = w + margin - (d - (totalW + totalH)); this.y[i] = h + margin; }
+      else { this.x[i] = -margin; this.y[i] = h + margin - (d - (2 * totalW + totalH)); }
     } else if (this.params.spawnMode === 'center') {
       this.x[i] = w * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
       this.y[i] = h * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
