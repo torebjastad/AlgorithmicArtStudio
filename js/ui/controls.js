@@ -198,11 +198,54 @@ class ControlsManager {
     });
   }
 
+  valueFromInput(input) {
+    if (input.type === 'checkbox') {
+      return input.checked;
+    }
+    const rawVal = parseFloat(input.value);
+    if (input.dataset.scale === 'log') {
+      const min = parseFloat(input.dataset.min || 0.05);
+      const max = parseFloat(input.dataset.max || 15.0);
+      const sliderMin = parseFloat(input.min || 0);
+      const sliderMax = parseFloat(input.max || 1000);
+      const u = (rawVal - sliderMin) / (sliderMax - sliderMin);
+      return min * Math.pow(max / min, Math.max(0, Math.min(1, u)));
+    }
+    return rawVal;
+  }
+
+  inputFromValue(input, val) {
+    if (input.type === 'checkbox') {
+      input.checked = !!val;
+      return;
+    }
+    if (input.dataset.scale === 'log') {
+      const min = parseFloat(input.dataset.min || 0.05);
+      const max = parseFloat(input.dataset.max || 15.0);
+      const sliderMin = parseFloat(input.min || 0);
+      const sliderMax = parseFloat(input.max || 1000);
+      const safeVal = Math.max(min, Math.min(max, val));
+      const u = Math.log(safeVal / min) / Math.log(max / min);
+      input.value = sliderMin + u * (sliderMax - sliderMin);
+    } else {
+      input.value = val;
+    }
+  }
+
+  formatBadge(val) {
+    if (typeof val !== 'number') return val;
+    if (val < 0.01) return val.toFixed(4);
+    if (val < 0.1) return val.toFixed(3);
+    if (val < 10) return val.toFixed(2);
+    if (val % 1 === 0) return val.toLocaleString();
+    return val.toFixed(2);
+  }
+
   bindDynamicInputs() {
     document.querySelectorAll('[data-param]').forEach(input => {
       const paramKey = input.dataset.param;
 
-      const updateVal = (val) => {
+      const updateVal = () => {
         const group = input.closest('[data-show-for-mode]');
         if (group && group.style.display === 'none') return;
 
@@ -212,15 +255,11 @@ class ControlsManager {
         const badge = input.closest('.control-group')?.querySelector('.val-badge') ||
                       document.querySelector(`[data-badge="${paramKey}"]`);
 
-        if (input.type === 'checkbox') {
-          mode.params[paramKey] = input.checked;
-        } else if (input.type === 'number' || input.type === 'range') {
-          const num = parseFloat(val);
-          mode.params[paramKey] = num;
-          if (badge) badge.textContent = num < 0.1 ? num.toFixed(4) : (num % 1 === 0 ? num.toLocaleString() : num.toFixed(2));
-        } else {
-          mode.params[paramKey] = val;
-          if (badge) badge.textContent = val;
+        const val = this.valueFromInput(input);
+        mode.params[paramKey] = val;
+
+        if (badge) {
+          badge.textContent = this.formatBadge(val);
         }
 
         if (paramKey === 'particleCount' && typeof mode.resetAllParticles === 'function') {
@@ -228,8 +267,8 @@ class ControlsManager {
         }
       };
 
-      input.addEventListener('input', (e) => updateVal(e.target.value));
-      input.addEventListener('change', (e) => updateVal(e.target.value));
+      input.addEventListener('input', updateVal);
+      input.addEventListener('change', updateVal);
     });
   }
 
@@ -344,16 +383,12 @@ class ControlsManager {
       const paramKey = input.dataset.param;
       if (mode.params[paramKey] !== undefined) {
         const val = mode.params[paramKey];
-        if (input.type === 'checkbox') {
-          input.checked = !!val;
-        } else {
-          input.value = val;
-        }
+        this.inputFromValue(input, val);
 
         const badge = input.closest('.control-group')?.querySelector('.val-badge') ||
                       document.querySelector(`[data-badge="${paramKey}"]`);
         if (badge) {
-          badge.textContent = typeof val === 'number' ? (val < 0.1 ? val.toFixed(4) : (val % 1 === 0 ? val.toLocaleString() : val.toFixed(2))) : val;
+          badge.textContent = this.formatBadge(val);
         }
       }
     });
