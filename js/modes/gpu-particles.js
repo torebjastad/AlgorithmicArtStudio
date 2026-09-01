@@ -283,10 +283,8 @@ class GPUParticlesMode {
 
         float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
 
-        // Smooth Hermite fade-in at birth and graceful fade-out at death
-        float fadeIn = smoothstep(0.0, 0.10, lifeRatio);
-        float fadeOut = smoothstep(1.0, 0.65, lifeRatio);
-        float lifeCurve = fadeIn * fadeOut;
+        // Start at 100% full intensity from frame 0 at the canvas edge and decay smoothly to 0.0 at the end
+        float lifeCurve = smoothstep(1.0, 0.45, lifeRatio);
 
         float alphaMultiplier = 1.0;
         float widthMultiplier = 1.0;
