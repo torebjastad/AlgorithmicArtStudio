@@ -279,19 +279,24 @@ class GPUParticlesMode {
         float len = length(dir);
         vec2 norm = (len > 0.0001) ? vec2(-dir.y, dir.x) / len : vec2(0.0, 1.0);
 
-        // Sub-pixel line extrusion width
-        float halfWidth = max(0.65, u_strokeWidth * 0.5);
+        float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
+
+        // Smooth Hermite fade-in at birth and graceful fade-out to exactly 0.0 at death
+        float fadeIn = smoothstep(0.0, 0.10, lifeRatio);
+        float fadeOut = smoothstep(1.0, 0.65, lifeRatio);
+        float lifeCurve = fadeIn * fadeOut;
+
+        // Elegant needle-point width tapering at trailing tips
+        float widthTaper = mix(0.35, 1.0, lifeCurve);
+        float halfWidth = max(0.4, u_strokeWidth * 0.5) * widthTaper;
         vec2 basePos = mix(prevPos, pos, a_quadPos.x);
         vec2 screenPos = basePos + norm * (a_quadPos.y * halfWidth);
 
         vec2 clipSpace = (screenPos / u_resolution) * 2.0 - 1.0;
         gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
 
-        float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
-        float lifeCurve = sin(lifeRatio * 3.14159265);
-
         v_side = a_quadPos.y;
-        v_alpha = max(0.35, lifeCurve); // Keep vibrant visibility throughout particle lifetime
+        v_alpha = lifeCurve; // Smoothly fades to 0.000 before respawning to eliminate abrupt cutoffs
         v_colorT = fract(lifeRatio);
       }
     `;
