@@ -1,8 +1,7 @@
 /**
  * WebGL2 GPGPU Texture Ping-Pong Particle Engine
  * Simulates 100,000 to 1,000,000+ particles at 60-144 FPS
- * 100% computed on GPU via MRT Float Textures & Instanced Streamlines.
- * Zero Transform-Feedback driver bugs, zero flickering, 100% rock-solid.
+ * 100% computed on GPU via MRT Float Textures, Motion Blur Fade & Instanced Streamlines.
  */
 
 class GPUParticlesMode {
@@ -19,7 +18,8 @@ class GPUParticlesMode {
       lacunarity: 2.0,
       timeSpeed: 0.003,
       particleSpeed: 3.5,
-      streakLength: 4.5,
+      streakLength: 4.0,     // Length of velocity streamline tail
+      fadeRate: 0.04,        // Motion blur decay rate (0.005 to 0.40)
       glowAlpha: 0.85,
       enableMouse: false,
       mouseForce: 'attract', // 'attract', 'repel', 'swirl'
@@ -54,7 +54,7 @@ class GPUParticlesMode {
   initShaders() {
     const gl = this.app.webgl.gl;
 
-    // 1. Fullscreen Quad Vertex Shader for GPGPU Sim
+    // 1. Fullscreen Quad Vertex Shader for GPGPU Sim & Fade
     const quadVsSource = `#version 300 es
       precision highp float;
       layout(location = 0) in vec2 a_position;
@@ -294,6 +294,21 @@ class GPUParticlesMode {
     gl.attachShader(this.renderProgram, renderVs);
     gl.attachShader(this.renderProgram, renderFs);
     gl.linkProgram(this.renderProgram);
+
+    // 4. Background Fade Quad Shader (Motion Trails)
+    const fadeFsSource = `#version 300 es
+      precision highp float;
+      out vec4 fragColor;
+      uniform vec4 u_fadeColor;
+      void main() {
+        fragColor = u_fadeColor;
+      }
+    `;
+    const fadeFs = this.app.webgl.compileShader(fadeFsSource, gl.FRAGMENT_SHADER);
+    this.fadeProgram = gl.createProgram();
+    gl.attachShader(this.fadeProgram, quadVs);
+    gl.attachShader(this.fadeProgram, fadeFs);
+    gl.linkProgram(this.fadeProgram);
   }
 
   initGPGPUBuffers() {
@@ -310,7 +325,7 @@ class GPUParticlesMode {
     const w = this.app.width || window.innerWidth;
     const h = this.app.height || window.innerHeight;
 
-    // Fullscreen Quad VAO for Simulation Pass
+    // Fullscreen Quad VAO for Simulation & Fade Passes
     this.simQuadVbo = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.simQuadVbo);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -415,6 +430,13 @@ class GPUParticlesMode {
 
   resetAllParticles() {
     this.initGPGPUBuffers();
+    const gl = this.app.webgl.gl;
+    if (gl) {
+      const palette = this.app.palette;
+      const bgRgb = palette.hexToRGB(palette.customBg);
+      gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
   }
 
   update(dt, time) {
@@ -487,14 +509,33 @@ class GPUParticlesMode {
     gl.bindVertexArray(null);
 
     // ==========================================
-    // STEP 2: Clear Canvas with Palette Background
+    // STEP 2: Motion Trail Fade / Canvas Refresh
     // ==========================================
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, w, h);
 
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE);
+
     const bgRgb = palette.hexToRGB(palette.customBg);
-    gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    if (p.fadeRate >= 0.35) {
+      // Instant clear at high fade rate
+      gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    } else {
+      // Smooth fading motion blur quad
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      gl.useProgram(this.fadeProgram);
+      gl.uniform4f(gl.getUniformLocation(this.fadeProgram, 'u_fadeColor'),
+        bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, p.fadeRate);
+
+      gl.bindVertexArray(this.simQuadVao);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.bindVertexArray(null);
+    }
 
     // ==========================================
     // STEP 3: Draw Luminous Streamlines to Canvas
@@ -513,9 +554,14 @@ class GPUParticlesMode {
     gl.bindTexture(gl.TEXTURE_2D, this.velSeedTextures[this.writeIdx]);
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_velSeedTex'), 1);
 
+    // Compute equilibrium-compensated glow alpha to prevent saturation
+    const effectiveAlpha = p.fadeRate >= 0.35
+      ? p.glowAlpha
+      : p.glowAlpha * Math.min(1.0, Math.max(0.15, p.fadeRate * 4.0));
+
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_streakLength'), p.streakLength);
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), p.glowAlpha);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), effectiveAlpha);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palA'), cosParams.a[0], cosParams.a[1], cosParams.a[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palB'), cosParams.b[0], cosParams.b[1], cosParams.b[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palC'), cosParams.c[0], cosParams.c[1], cosParams.c[2]);
