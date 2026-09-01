@@ -1,7 +1,8 @@
 /**
  * WebGL2 GPGPU Texture Ping-Pong Particle Engine
  * Simulates 100,000 to 1,000,000+ particles at 60-144 FPS
- * 100% computed on GPU via MRT Float Textures, Motion Blur Fade & Instanced Streamlines.
+ * 100% computed on GPU via MRT Float Textures, Motion Blur Fade & Anti-Aliased Ribbon Quads.
+ * Seamless historical frame connection with analytic sub-pixel Gaussian anti-aliasing.
  */
 
 class GPUParticlesMode {
@@ -17,9 +18,9 @@ class GPUParticlesMode {
       persistence: 0.5,
       lacunarity: 2.0,
       timeSpeed: 0.003,
-      particleSpeed: 0.3,
-      streakLength: 4.0,     // Length of velocity streamline tail
-      fadeRate: 0.04,        // Motion blur decay rate (0.005 to 0.40)
+      particleSpeed: 0.3,    // Serene default speed
+      strokeWidth: 1.4,      // Anti-aliased line thickness
+      fadeRate: 0.04,        // Motion blur decay rate (0.001 to 0.40)
       glowAlpha: 0.85,
       spawnMode: 'random',   // 'random', 'edges', 'center'
       enableMouse: false,
@@ -28,7 +29,7 @@ class GPUParticlesMode {
       mouseStrength: 4.0
     };
 
-    this.texSize = 512; // 512x512 default = 262k, can resize to 1024x1024
+    this.texSize = 1024;
     this.readIdx = 0;
     this.writeIdx = 1;
     this.initialized = false;
@@ -66,12 +67,12 @@ class GPUParticlesMode {
       }
     `;
 
-    // 2. GPGPU Simulation Fragment Shader (Updates Pos & Vel via MRT)
+    // 2. GPGPU Simulation Fragment Shader (Updates Pos & Historical prevPos via MRT)
     const simFsSource = `#version 300 es
       precision highp float;
 
-      layout(location = 0) out vec4 outPosLife; // xy: pos, z: age, w: maxLife
-      layout(location = 1) out vec4 outVelSeed; // xy: vel, zw: seed
+      layout(location = 0) out vec4 outPosLife; // xy: current pos, z: age, w: maxLife
+      layout(location = 1) out vec4 outPrevSeed; // xy: exact prevPos (history), zw: seed
 
       in vec2 v_uv;
 
@@ -108,7 +109,7 @@ class GPUParticlesMode {
 
       vec2 getSpawnPos(vec2 rnd, vec2 res, int mode) {
         if (mode == 1) {
-          // Edges / Perimeter Only
+          // Edges / Perimeter Only (spawns on border with inset)
           float perimeter = 2.0 * (res.x + res.y);
           float d = rnd.x * perimeter;
           if (d < res.x) {
@@ -175,19 +176,19 @@ class GPUParticlesMode {
 
       void main() {
         vec4 posLife = texture(u_posLifeTex, v_uv);
-        vec4 velSeed = texture(u_velSeedTex, v_uv);
+        vec4 prevSeed = texture(u_velSeedTex, v_uv);
 
         vec2 pos = posLife.xy;
+        vec2 oldPos = pos;
         float age = posLife.z + 1.0;
         float maxLife = posLife.w;
-        vec2 vel = velSeed.xy;
-        vec2 seed = velSeed.zw;
+        vec2 seed = prevSeed.zw;
 
         // Respawn when particle expires or leaves the screen
         if (age >= maxLife || pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0) {
           vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
           pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
-          vel = (u_spawnMode == 1) ? normalize(u_resolution * 0.5 - pos) * u_particleSpeed * 2.0 : vec2(0.0);
+          oldPos = pos; // Avoid connecting streak across screen on respawn
           age = 0.0;
           maxLife = 100.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 200.0;
           seed += vec2(0.137, 0.291);
@@ -195,7 +196,7 @@ class GPUParticlesMode {
 
         float t = u_time * 0.04;
         vec2 np = pos * u_noiseScale;
-        vec2 targetVel = vec2(0.0);
+        vec2 vel = vec2(0.0);
 
         if (u_noiseType == 0) {
           // Divergence-Free Flow Swirls (Curl of potential Psi)
@@ -206,21 +207,21 @@ class GPUParticlesMode {
           float n4 = fbm(np - vec2(eps, 0.0) + vec2(0.0, t * 0.02));
           vec2 c = vec2((n1 - n2) / (2.0 * eps), -(n3 - n4) / (2.0 * eps));
           float len = length(c);
-          targetVel = (len > 0.0001 ? (c / len) : vec2(1.0, 0.0)) * u_particleSpeed * 2.8;
+          vel = (len > 0.0001 ? (c / len) : vec2(1.0, 0.0)) * u_particleSpeed * 2.8;
         } else if (u_noiseType == 1) {
           // Harmonic Perlin Angles
           float angle = fbm(np + vec2(t * 0.015, t * 0.015)) * 6.2831853 * 2.0;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
+          vel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
         } else if (u_noiseType == 3) {
           // Vortex Spiral Flow
           vec2 center = u_resolution * 0.5;
           float dist = length(pos - center);
           float angle = fbm(np + vec2(t * 0.01, t * 0.01)) * 6.2831853 * 1.5 + dist * 0.004;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
+          vel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
         } else {
           // Simplex Harmonic Flow
           float angle = snoise(np * 1.2 + vec2(t * 0.02, t * 0.02)) * 6.2831853 * 2.0;
-          targetVel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
+          vel = vec2(cos(angle), sin(angle)) * u_particleSpeed * 2.8;
         }
 
         // Interactive Mouse Influence
@@ -229,18 +230,17 @@ class GPUParticlesMode {
           float dist = length(diff);
           if (dist < u_mouseRadius && dist > 1.0) {
             float factor = (1.0 - dist / u_mouseRadius) * u_mouseStrength;
-            if (u_mouseForce == 0) targetVel += normalize(diff) * factor * 5.0;
-            else if (u_mouseForce == 1) targetVel -= normalize(diff) * factor * 7.0;
-            else if (u_mouseForce == 2) targetVel += vec2(-diff.y, diff.x) / dist * factor * 7.0;
+            if (u_mouseForce == 0) vel += normalize(diff) * factor * 5.0;
+            else if (u_mouseForce == 1) vel -= normalize(diff) * factor * 7.0;
+            else if (u_mouseForce == 2) vel += vec2(-diff.y, diff.x) / dist * factor * 7.0;
           }
         }
 
-        // Smooth fluid inertia
-        vel = mix(vel, targetVel, 0.22);
+        // Advance position
         pos += vel;
 
         outPosLife = vec4(pos, age, maxLife);
-        outVelSeed = vec4(vel, seed);
+        outPrevSeed = vec4(oldPos, seed);
       }
     `;
 
@@ -251,13 +251,14 @@ class GPUParticlesMode {
     gl.attachShader(this.simProgram, simFs);
     gl.linkProgram(this.simProgram);
 
-    // 3. High-Performance Streamline Render Vertex Shader (gl.LINES)
+    // 3. High-Resolution Anti-Aliased Ribbon Quad Vertex Shader (gl.TRIANGLE_STRIP)
     const renderVsSource = `#version 300 es
       precision highp float;
 
-      layout(location = 0) in float a_t;          // 0.0 (tail) or 1.0 (head)
+      layout(location = 0) in vec2 a_quadPos;     // x: t (0..1), y: side (-1..+1)
       layout(location = 1) in vec2 a_particleUv;  // Per-instance UV coordinate
 
+      out float v_side;
       out float v_alpha;
       out float v_colorT;
 
@@ -265,33 +266,40 @@ class GPUParticlesMode {
       uniform sampler2D u_velSeedTex;
 
       uniform vec2 u_resolution;
-      uniform float u_streakLength;
+      uniform float u_strokeWidth;
 
       void main() {
         vec4 posLife = texture(u_posLifeTex, a_particleUv);
-        vec4 velSeed = texture(u_velSeedTex, a_particleUv);
+        vec4 prevSeed = texture(u_velSeedTex, a_particleUv);
 
         vec2 pos = posLife.xy;
-        vec2 vel = velSeed.xy;
+        vec2 prevPos = prevSeed.xy; // Exact historical position from previous frame
 
-        // Tail stretches backward along velocity vector
-        vec2 tail = pos - vel * u_streakLength;
-        vec2 head = pos + vel * 0.25;
-        vec2 p = mix(tail, head, a_t);
+        vec2 dir = pos - prevPos;
+        float len = length(dir);
+        vec2 norm = (len > 0.0001) ? vec2(-dir.y, dir.x) / len : vec2(0.0, 1.0);
 
-        vec2 clipSpace = (p / u_resolution) * 2.0 - 1.0;
+        // Sub-pixel line extrusion width
+        float halfWidth = max(0.65, u_strokeWidth * 0.5);
+        vec2 basePos = mix(prevPos, pos, a_quadPos.x);
+        vec2 screenPos = basePos + norm * (a_quadPos.y * halfWidth);
+
+        vec2 clipSpace = (screenPos / u_resolution) * 2.0 - 1.0;
         gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
 
         float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
         float lifeCurve = sin(lifeRatio * 3.14159265);
-        v_alpha = lifeCurve * (0.15 + 0.85 * a_t);
-        v_colorT = fract(lifeRatio + length(vel) * 0.04);
+
+        v_side = a_quadPos.y;
+        v_alpha = lifeCurve * (0.3 + 0.7 * a_quadPos.x);
+        v_colorT = fract(lifeRatio + len * 0.04);
       }
     `;
 
     const renderFsSource = `#version 300 es
       precision highp float;
 
+      in float v_side;
       in float v_alpha;
       in float v_colorT;
       out vec4 fragColor;
@@ -307,8 +315,12 @@ class GPUParticlesMode {
       }
 
       void main() {
+        // Analytic sub-pixel Gaussian edge anti-aliasing
+        float edgeDist = abs(v_side);
+        float edgeAntialias = exp(-edgeDist * edgeDist * 3.5);
+
         vec3 col = cosinePalette(v_colorT);
-        fragColor = vec4(col, v_alpha * u_glowAlpha);
+        fragColor = vec4(col, v_alpha * edgeAntialias * u_glowAlpha);
       }
     `;
 
@@ -337,7 +349,7 @@ class GPUParticlesMode {
 
   initGPGPUBuffers() {
     const gl = this.app.webgl.gl;
-    this.texSize = 1024; // Allocate full 1,048,576 capacity for seamless real-time slider control
+    this.texSize = 1024; // Full 1,048,576 particle capacity
 
     const size = this.texSize;
     const totalParticles = size * size;
@@ -360,17 +372,17 @@ class GPUParticlesMode {
 
     // Initial Particle Texture Data
     const posLifeData = new Float32Array(totalParticles * 4);
-    const velSeedData = new Float32Array(totalParticles * 4);
+    const prevSeedData = new Float32Array(totalParticles * 4);
 
     for (let i = 0; i < totalParticles; i++) {
       let rx, ry;
       if (this.params.spawnMode === 'edges') {
         const perimeter = 2 * (w + h);
         const d = Math.random() * perimeter;
-        if (d < w) { rx = d; ry = 0; }
-        else if (d < w + h) { rx = w; ry = d - w; }
-        else if (d < 2 * w + h) { rx = d - (w + h); ry = h; }
-        else { rx = 0; ry = d - (2 * w + h); }
+        if (d < w) { rx = d; ry = 2; }
+        else if (d < w + h) { rx = w - 2; ry = d - w; }
+        else if (d < 2 * w + h) { rx = d - (w + h); ry = h - 2; }
+        else { rx = 2; ry = d - (2 * w + h); }
       } else if (this.params.spawnMode === 'center') {
         rx = w * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
         ry = h * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
@@ -387,10 +399,11 @@ class GPUParticlesMode {
       posLifeData[i * 4 + 2] = age;
       posLifeData[i * 4 + 3] = maxLife;
 
-      velSeedData[i * 4] = 0;
-      velSeedData[i * 4 + 1] = 0;
-      velSeedData[i * 4 + 2] = Math.random();
-      velSeedData[i * 4 + 3] = Math.random();
+      // Exact historical prevPos
+      prevSeedData[i * 4] = rx;
+      prevSeedData[i * 4 + 1] = ry;
+      prevSeedData[i * 4 + 2] = Math.random();
+      prevSeedData[i * 4 + 3] = Math.random();
     }
 
     // Ping-Pong GPGPU Textures & FBOs
@@ -407,9 +420,9 @@ class GPUParticlesMode {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-      // Velocity + Seed Texture (RGBA32F)
+      // PrevPos + Seed Texture (RGBA32F)
       gl.bindTexture(gl.TEXTURE_2D, this.velSeedTextures[i]);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, size, size, 0, gl.RGBA, gl.FLOAT, velSeedData);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, size, size, 0, gl.RGBA, gl.FLOAT, prevSeedData);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -422,12 +435,18 @@ class GPUParticlesMode {
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    // Streamline Render Geometry (Line segment + UV attribute per instance)
-    this.lineVbo = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.lineVbo);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0.0, 1.0]), gl.STATIC_DRAW);
+    // Anti-Aliased Ribbon Quad Geometry (TRIANGLE_STRIP: 4 vertices)
+    // [t, side]: (0, -1), (0, 1), (1, -1), (1, 1)
+    this.ribbonVbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.ribbonVbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      0.0, -1.0,
+      0.0,  1.0,
+      1.0, -1.0,
+      1.0,  1.0
+    ]), gl.STATIC_DRAW);
 
-    // Generate Particle UV coordinates in texture
+    // Particle UV coordinates in texture
     const uvData = new Float32Array(totalParticles * 2);
     let pIdx = 0;
     for (let y = 0; y < size; y++) {
@@ -442,14 +461,14 @@ class GPUParticlesMode {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.particleUvVbo);
     gl.bufferData(gl.ARRAY_BUFFER, uvData, gl.STATIC_DRAW);
 
-    // Instanced Streamline Render VAO
+    // Instanced Ribbon Quad Render VAO
     this.renderVao = gl.createVertexArray();
     gl.bindVertexArray(this.renderVao);
 
-    // a_t [0.0, 1.0] (per-vertex, divisor 0)
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.lineVbo);
+    // a_quadPos [t, side] (per-vertex, divisor 0)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.ribbonVbo);
     gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 1, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.vertexAttribDivisor(0, 0);
 
     // a_particleUv (per-instance, divisor 1)
@@ -482,7 +501,7 @@ class GPUParticlesMode {
 
     const p = this.params;
     const palette = this.app.palette;
-    const count = Math.min(p.particleCount, this.texSize * this.texSize);
+    const count = Math.min(Math.round(p.particleCount), this.texSize * this.texSize);
     const cosParams = palette.current.cosine || {
       a: [0.5, 0.5, 0.5],
       b: [0.5, 0.5, 0.5],
@@ -574,7 +593,7 @@ class GPUParticlesMode {
     }
 
     // ==========================================
-    // STEP 3: Draw Luminous Streamlines to Canvas
+    // STEP 3: Draw Anti-Aliased Ribbon Quads
     // ==========================================
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // Additive luminous glow
@@ -593,10 +612,10 @@ class GPUParticlesMode {
     // Compute equilibrium-compensated glow alpha to prevent saturation
     const effectiveAlpha = p.fadeRate >= 0.35
       ? p.glowAlpha
-      : p.glowAlpha * Math.min(1.0, Math.max(0.15, p.fadeRate * 4.0));
+      : p.glowAlpha * Math.min(1.0, Math.max(0.12, p.fadeRate * 4.0));
 
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_streakLength'), p.streakLength);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_strokeWidth'), p.strokeWidth * (this.app.webgl.dpr || 1));
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), effectiveAlpha);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palA'), cosParams.a[0], cosParams.a[1], cosParams.a[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palB'), cosParams.b[0], cosParams.b[1], cosParams.b[2]);
@@ -604,7 +623,7 @@ class GPUParticlesMode {
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palD'), cosParams.d[0], cosParams.d[1], cosParams.d[2]);
 
     gl.bindVertexArray(this.renderVao);
-    gl.drawArraysInstanced(gl.LINES, 0, 2, count);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, count);
     gl.bindVertexArray(null);
 
     gl.disable(gl.BLEND);
