@@ -272,7 +272,7 @@ class ControlsManager {
           badge.textContent = this.formatBadge(val);
         }
 
-        if (paramKey === 'particleCount' && typeof mode.resetAllParticles === 'function') {
+        if ((paramKey === 'particleCount' || paramKey === 'spawnMode') && typeof mode.resetAllParticles === 'function') {
           mode.resetAllParticles();
         }
       };

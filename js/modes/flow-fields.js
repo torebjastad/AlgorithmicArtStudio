@@ -26,6 +26,7 @@ class FlowFieldMode {
       blendMode: 'lighter',
       jitter: 0.05,
       colorCycleSpeed: 0.2,
+      spawnMode: 'random',   // 'random', 'edges', 'center'
       mouseForce: 'none',    // 'none', 'attract', 'repel', 'swirl'
       mouseRadius: 180,
       mouseStrength: 2.0
@@ -52,8 +53,20 @@ class FlowFieldMode {
   }
 
   resetParticle(i, w, h) {
-    this.x[i] = Math.random() * w;
-    this.y[i] = Math.random() * h;
+    if (this.params.spawnMode === 'edges') {
+      const perimeter = 2 * (w + h);
+      const d = Math.random() * perimeter;
+      if (d < w) { this.x[i] = d; this.y[i] = 0; }
+      else if (d < w + h) { this.x[i] = w; this.y[i] = d - w; }
+      else if (d < 2 * w + h) { this.x[i] = d - (w + h); this.y[i] = h; }
+      else { this.x[i] = 0; this.y[i] = d - (2 * w + h); }
+    } else if (this.params.spawnMode === 'center') {
+      this.x[i] = w * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
+      this.y[i] = h * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
+    } else {
+      this.x[i] = Math.random() * w;
+      this.y[i] = Math.random() * h;
+    }
     this.prevX[i] = this.x[i];
     this.prevY[i] = this.y[i];
     this.vx[i] = 0;

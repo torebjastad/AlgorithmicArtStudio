@@ -221,6 +221,15 @@
           </div>
 
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
+            <label for="select-spawn-mode">Particle Spawn Origin</label>
+            <select id="select-spawn-mode" class="glass-select" data-param="spawnMode">
+              <option value="random">Full Canvas (Random Everywhere)</option>
+              <option value="edges">Canvas Edges / Perimeter Only</option>
+              <option value="center">Center Core / Radial Burst</option>
+            </select>
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <label for="select-mouse-force">Mouse Force Type</label>
             <select id="select-mouse-force" class="glass-select" data-param="mouseForce">
               <option value="attract">Gravity Attraction</option>

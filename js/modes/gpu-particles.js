@@ -21,6 +21,7 @@ class GPUParticlesMode {
       streakLength: 4.0,     // Length of velocity streamline tail
       fadeRate: 0.04,        // Motion blur decay rate (0.005 to 0.40)
       glowAlpha: 0.85,
+      spawnMode: 'random',   // 'random', 'edges', 'center'
       enableMouse: false,
       mouseForce: 'attract', // 'attract', 'repel', 'swirl'
       mouseRadius: 220,
@@ -85,6 +86,7 @@ class GPUParticlesMode {
       uniform float u_lacunarity;
       uniform float u_particleSpeed;
       uniform int u_noiseType; // 0: curl, 1: perlin, 2: simplex, 3: vortex
+      uniform int u_spawnMode; // 0: random, 1: edges, 2: center
       uniform vec2 u_mouse;
       uniform bool u_enableMouse;
       uniform int u_mouseForce; // 0: attract, 1: repel, 2: swirl
@@ -102,6 +104,28 @@ class GPUParticlesMode {
         vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
         p3 += dot(p3, p3.yzx + 33.33);
         return fract((p3.xx + p3.yz) * p3.zy);
+      }
+
+      vec2 getSpawnPos(vec2 rnd, vec2 res, int mode) {
+        if (mode == 1) {
+          // Edges / Perimeter Only
+          float perimeter = 2.0 * (res.x + res.y);
+          float d = rnd.x * perimeter;
+          if (d < res.x) {
+            return vec2(d, 0.0);
+          } else if (d < res.x + res.y) {
+            return vec2(res.x, d - res.x);
+          } else if (d < 2.0 * res.x + res.y) {
+            return vec2(d - (res.x + res.y), res.y);
+          } else {
+            return vec2(0.0, d - (2.0 * res.x + res.y));
+          }
+        } else if (mode == 2) {
+          // Center Core Burst
+          return res * 0.5 + (rnd - 0.5) * min(res.x, res.y) * 0.18;
+        }
+        // Full Canvas (Random)
+        return vec2(rnd.x * res.x, rnd.y * res.y);
       }
 
       // Gustavson Fast Simplex Noise 2D
@@ -162,7 +186,7 @@ class GPUParticlesMode {
         // Respawn when particle expires or leaves the screen
         if (age >= maxLife || pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0) {
           vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
-          pos = vec2(rnd.x * u_resolution.x, rnd.y * u_resolution.y);
+          pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
           vel = vec2(0.0);
           age = 0.0;
           maxLife = 100.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 200.0;
@@ -339,8 +363,22 @@ class GPUParticlesMode {
     const velSeedData = new Float32Array(totalParticles * 4);
 
     for (let i = 0; i < totalParticles; i++) {
-      const rx = Math.random() * w;
-      const ry = Math.random() * h;
+      let rx, ry;
+      if (this.params.spawnMode === 'edges') {
+        const perimeter = 2 * (w + h);
+        const d = Math.random() * perimeter;
+        if (d < w) { rx = d; ry = 0; }
+        else if (d < w + h) { rx = w; ry = d - w; }
+        else if (d < 2 * w + h) { rx = d - (w + h); ry = h; }
+        else { rx = 0; ry = d - (2 * w + h); }
+      } else if (this.params.spawnMode === 'center') {
+        rx = w * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
+        ry = h * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
+      } else {
+        rx = Math.random() * w;
+        ry = Math.random() * h;
+      }
+
       const maxLife = 80 + Math.random() * 180;
       const age = Math.random() * maxLife;
 
@@ -490,6 +528,9 @@ class GPUParticlesMode {
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_lacunarity'), p.lacunarity);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_particleSpeed'), p.particleSpeed);
     gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_noiseType'), noiseTypeMap[p.noiseType] || 0);
+
+    const spawnModeMap = { random: 0, edges: 1, center: 2 };
+    gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_spawnMode'), spawnModeMap[p.spawnMode] || 0);
 
     const mouseInf = p.enableMouse && (mouse.isHovering || mouse.isDown);
     gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_enableMouse'), mouseInf ? 1 : 0);
