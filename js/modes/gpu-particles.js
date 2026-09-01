@@ -112,13 +112,13 @@ class GPUParticlesMode {
           float perimeter = 2.0 * (res.x + res.y);
           float d = rnd.x * perimeter;
           if (d < res.x) {
-            return vec2(d, 0.0);
+            return vec2(d, 2.0);
           } else if (d < res.x + res.y) {
-            return vec2(res.x, d - res.x);
+            return vec2(res.x - 2.0, d - res.x);
           } else if (d < 2.0 * res.x + res.y) {
-            return vec2(d - (res.x + res.y), res.y);
+            return vec2(d - (res.x + res.y), res.y - 2.0);
           } else {
-            return vec2(0.0, d - (2.0 * res.x + res.y));
+            return vec2(2.0, d - (2.0 * res.x + res.y));
           }
         } else if (mode == 2) {
           // Center Core Burst
@@ -187,7 +187,7 @@ class GPUParticlesMode {
         if (age >= maxLife || pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0) {
           vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
           pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
-          vel = vec2(0.0);
+          vel = (u_spawnMode == 1) ? normalize(u_resolution * 0.5 - pos) * u_particleSpeed * 2.0 : vec2(0.0);
           age = 0.0;
           maxLife = 100.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 200.0;
           seed += vec2(0.137, 0.291);

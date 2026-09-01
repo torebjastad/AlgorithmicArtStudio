@@ -202,7 +202,13 @@ class ControlsManager {
     if (input.type === 'checkbox') {
       return input.checked;
     }
+    if (input.tagName === 'SELECT' || input.type === 'text') {
+      return input.value;
+    }
     const rawVal = parseFloat(input.value);
+    if (Number.isNaN(rawVal)) {
+      return input.value;
+    }
     if (input.dataset.scale === 'log') {
       const min = parseFloat(input.dataset.min || 0.05);
       const max = parseFloat(input.dataset.max || 15.0);
