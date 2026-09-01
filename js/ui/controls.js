@@ -209,7 +209,16 @@ class ControlsManager {
       const sliderMin = parseFloat(input.min || 0);
       const sliderMax = parseFloat(input.max || 1000);
       const u = (rawVal - sliderMin) / (sliderMax - sliderMin);
-      return min * Math.pow(max / min, Math.max(0, Math.min(1, u)));
+      let val = min * Math.pow(max / min, Math.max(0, Math.min(1, u)));
+
+      if (input.dataset.param === 'particleCount') {
+        if (val < 1000) val = Math.round(val / 10) * 10;
+        else if (val < 10000) val = Math.round(val / 50) * 50;
+        else if (val < 100000) val = Math.round(val / 500) * 500;
+        else val = Math.round(val / 5000) * 5000;
+        val = Math.max(min, Math.min(max, val));
+      }
+      return val;
     }
     return rawVal;
   }
@@ -234,6 +243,7 @@ class ControlsManager {
 
   formatBadge(val) {
     if (typeof val !== 'number') return val;
+    if (val >= 100 && Math.abs(val - Math.round(val)) < 0.001) return Math.round(val).toLocaleString();
     if (val < 0.01) return val.toFixed(4);
     if (val < 0.1) return val.toFixed(3);
     if (val < 10) return val.toFixed(2);

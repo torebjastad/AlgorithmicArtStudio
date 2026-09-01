@@ -182,10 +182,10 @@
           <!-- GPU 1M Particle Count Slider -->
           <div class="control-group" data-show-for-mode="gpu_particles">
             <div class="label-row">
-              <label for="slider-gpu-count">GPU Particle Count (Up to 1,000,000)</label>
-              <span class="val-badge" data-badge="particleCount">250000</span>
+              <label for="slider-gpu-count">GPU Particle Count (100 to 1,000,000)</label>
+              <span class="val-badge" data-badge="particleCount">250,000</span>
             </div>
-            <input type="range" id="slider-gpu-count" data-param="particleCount" min="10000" max="1000000" step="10000" value="250000">
+            <input type="range" id="slider-gpu-count" data-param="particleCount" data-scale="log" data-min="100" data-max="1000000" min="0" max="1000" step="1" value="850">
           </div>
 
           <!-- CPU Particle Count Slider -->

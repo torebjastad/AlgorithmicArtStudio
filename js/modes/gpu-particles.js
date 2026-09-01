@@ -313,12 +313,7 @@ class GPUParticlesMode {
 
   initGPGPUBuffers() {
     const gl = this.app.webgl.gl;
-    const count = this.params.particleCount;
-    
-    // Choose texture size based on particle count
-    if (count > 500000) this.texSize = 1024;
-    else if (count > 262144) this.texSize = 720;
-    else this.texSize = 512;
+    this.texSize = 1024; // Allocate full 1,048,576 capacity for seamless real-time slider control
 
     const size = this.texSize;
     const totalParticles = size * size;
