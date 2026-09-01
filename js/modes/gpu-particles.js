@@ -22,6 +22,7 @@ class GPUParticlesMode {
       strokeWidth: 1.4,      // Anti-aliased line thickness
       fadeRate: 0.04,        // Motion blur decay rate (0.001 to 0.40)
       glowAlpha: 0.85,
+      taperMode: 'both',     // 'both', 'intensity', 'width', 'none'
       spawnMode: 'random',   // 'random', 'edges', 'center'
       enableMouse: false,
       mouseForce: 'attract', // 'attract', 'repel', 'swirl'
@@ -267,6 +268,7 @@ class GPUParticlesMode {
 
       uniform vec2 u_resolution;
       uniform float u_strokeWidth;
+      uniform int u_taperMode; // 0: both, 1: intensity only, 2: width only, 3: none / uniform
 
       void main() {
         vec4 posLife = texture(u_posLifeTex, a_particleUv);
@@ -281,14 +283,33 @@ class GPUParticlesMode {
 
         float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
 
-        // Smooth Hermite fade-in at birth and graceful fade-out to exactly 0.0 at death
+        // Smooth Hermite fade-in at birth and graceful fade-out at death
         float fadeIn = smoothstep(0.0, 0.10, lifeRatio);
         float fadeOut = smoothstep(1.0, 0.65, lifeRatio);
         float lifeCurve = fadeIn * fadeOut;
 
-        // Elegant needle-point width tapering at trailing tips
-        float widthTaper = mix(0.35, 1.0, lifeCurve);
-        float halfWidth = max(0.4, u_strokeWidth * 0.5) * widthTaper;
+        float alphaMultiplier = 1.0;
+        float widthMultiplier = 1.0;
+
+        if (u_taperMode == 0) {
+          // Both: Intensity Fade + Width Needle Taper
+          alphaMultiplier = lifeCurve;
+          widthMultiplier = mix(0.30, 1.0, lifeCurve);
+        } else if (u_taperMode == 1) {
+          // Intensity Fade Only (Constant Stroke Width)
+          alphaMultiplier = lifeCurve;
+          widthMultiplier = 1.0;
+        } else if (u_taperMode == 2) {
+          // Width Fade Only (Full Opacity, Solid Needle to Point)
+          alphaMultiplier = 1.0;
+          widthMultiplier = mix(0.0, 1.0, lifeCurve);
+        } else {
+          // None: Uniform Constant Ribbon
+          alphaMultiplier = 1.0;
+          widthMultiplier = 1.0;
+        }
+
+        float halfWidth = max(0.4, u_strokeWidth * 0.5) * widthMultiplier;
         vec2 basePos = mix(prevPos, pos, a_quadPos.x);
         vec2 screenPos = basePos + norm * (a_quadPos.y * halfWidth);
 
@@ -296,7 +317,7 @@ class GPUParticlesMode {
         gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
 
         v_side = a_quadPos.y;
-        v_alpha = lifeCurve; // Smoothly fades to 0.000 before respawning to eliminate abrupt cutoffs
+        v_alpha = alphaMultiplier;
         v_colorT = fract(lifeRatio);
       }
     `;
@@ -614,12 +635,12 @@ class GPUParticlesMode {
     gl.bindTexture(gl.TEXTURE_2D, this.velSeedTextures[this.writeIdx]);
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_velSeedTex'), 1);
 
-    // Full radiant color glow alpha directly from parameters
-    const effectiveAlpha = p.glowAlpha;
-
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_strokeWidth'), p.strokeWidth * (this.app.webgl.dpr || 1));
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), effectiveAlpha);
+
+    const taperModeMap = { both: 0, intensity: 1, width: 2, none: 3 };
+    gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_taperMode'), taperModeMap[p.taperMode] ?? 0);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palA'), cosParams.a[0], cosParams.a[1], cosParams.a[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palB'), cosParams.b[0], cosParams.b[1], cosParams.b[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palC'), cosParams.c[0], cosParams.c[1], cosParams.c[2]);
