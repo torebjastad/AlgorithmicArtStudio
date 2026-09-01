@@ -291,7 +291,7 @@ class GPUParticlesMode {
         float lifeCurve = sin(lifeRatio * 3.14159265);
 
         v_side = a_quadPos.y;
-        v_alpha = lifeCurve; // Flat luminance along ribbon segment to eliminate beaded dots
+        v_alpha = max(0.35, lifeCurve); // Keep vibrant visibility throughout particle lifetime
         v_colorT = fract(lifeRatio);
       }
     `;
@@ -317,7 +317,7 @@ class GPUParticlesMode {
       void main() {
         // Analytic sub-pixel Gaussian edge anti-aliasing
         float edgeDist = abs(v_side);
-        float edgeAntialias = exp(-edgeDist * edgeDist * 3.5);
+        float edgeAntialias = exp(-edgeDist * edgeDist * 2.5);
 
         vec3 col = cosinePalette(v_colorT);
         fragColor = vec4(col, v_alpha * edgeAntialias * u_glowAlpha);
@@ -609,10 +609,8 @@ class GPUParticlesMode {
     gl.bindTexture(gl.TEXTURE_2D, this.velSeedTextures[this.writeIdx]);
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_velSeedTex'), 1);
 
-    // Compute equilibrium-compensated glow alpha to prevent saturation
-    const effectiveAlpha = p.fadeRate >= 0.35
-      ? p.glowAlpha
-      : p.glowAlpha * Math.min(1.0, Math.max(0.12, p.fadeRate * 4.0));
+    // Full radiant color glow alpha directly from parameters
+    const effectiveAlpha = p.glowAlpha;
 
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_strokeWidth'), p.strokeWidth * (this.app.webgl.dpr || 1));
