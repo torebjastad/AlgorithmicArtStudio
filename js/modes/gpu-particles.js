@@ -637,7 +637,7 @@ class GPUParticlesMode {
 
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_strokeWidth'), p.strokeWidth * (this.app.webgl.dpr || 1));
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), effectiveAlpha);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), p.glowAlpha);
 
     const taperModeMap = { both: 0, intensity: 1, width: 2, none: 3 };
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_taperMode'), taperModeMap[p.taperMode] ?? 0);
