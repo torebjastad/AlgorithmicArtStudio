@@ -17,7 +17,7 @@ class GPUParticlesMode {
       persistence: 0.5,
       lacunarity: 2.0,
       timeSpeed: 0.003,
-      particleSpeed: 3.5,
+      particleSpeed: 0.3,
       streakLength: 4.0,     // Length of velocity streamline tail
       fadeRate: 0.04,        // Motion blur decay rate (0.005 to 0.40)
       glowAlpha: 0.85,
