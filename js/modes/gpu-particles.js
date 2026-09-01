@@ -291,8 +291,8 @@ class GPUParticlesMode {
         float lifeCurve = sin(lifeRatio * 3.14159265);
 
         v_side = a_quadPos.y;
-        v_alpha = lifeCurve * (0.3 + 0.7 * a_quadPos.x);
-        v_colorT = fract(lifeRatio + len * 0.04);
+        v_alpha = lifeCurve; // Flat luminance along ribbon segment to eliminate beaded dots
+        v_colorT = fract(lifeRatio);
       }
     `;
 
