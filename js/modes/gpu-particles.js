@@ -92,6 +92,7 @@ class GPUParticlesMode {
       uniform int u_noiseType; // 0: curl, 1: perlin, 2: simplex, 3: vortex
       uniform int u_spawnMode; // 0: random, 1: edges, 2: center
       uniform int u_spawnEnabled; // 1: normal spawning, 0: stop spawning new particles
+      uniform float u_fadeRate;
       uniform vec2 u_mouse;
       uniform bool u_enableMouse;
       uniform int u_mouseForce; // 0: attract, 1: repel, 2: swirl
@@ -199,7 +200,9 @@ class GPUParticlesMode {
         }
 
         bool isOutOfBounds = (pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0);
-        bool isDead = (age >= maxLife || isOutOfBounds);
+        // At fadeRate == 0 (Never Decay), particles propagate all the way until they exit the canvas bounds,
+        // so trails never stop abruptly in the middle of the screen!
+        bool isDead = (u_fadeRate <= 0.00001) ? isOutOfBounds : (age >= maxLife || isOutOfBounds);
 
         if (isDead) {
           if (u_spawnEnabled == 1) {
@@ -619,6 +622,7 @@ class GPUParticlesMode {
     const spawnModeMap = { random: 0, edges: 1, center: 2 };
     gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_spawnMode'), spawnModeMap[p.spawnMode] || 0);
     gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_spawnEnabled'), (p.spawnEnabled !== false) ? 1 : 0);
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_fadeRate'), p.fadeRate);
 
     const mouseInf = p.enableMouse && (mouse.isHovering || mouse.isDown);
     gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_enableMouse'), mouseInf ? 1 : 0);

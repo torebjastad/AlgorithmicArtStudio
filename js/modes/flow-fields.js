@@ -176,7 +176,7 @@ class FlowFieldMode {
 
       // Respawn or retire when dead or out of canvas bounds
       const isOutOfBounds = (this.x[i] < -20 || this.x[i] > w + 20 || this.y[i] < -20 || this.y[i] > h + 20);
-      const isDead = (this.life[i] >= this.maxLife[i] || isOutOfBounds);
+      const isDead = (p.fadeRate <= 0.00001) ? isOutOfBounds : (this.life[i] >= this.maxLife[i] || isOutOfBounds);
 
       if (isDead) {
         if (p.spawnEnabled !== false) {
