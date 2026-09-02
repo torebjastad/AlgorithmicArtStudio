@@ -210,7 +210,7 @@
               <label for="slider-fade-rate">Trail Decay Rate (Motion Blur)</label>
               <span class="val-badge" data-badge="fadeRate">0.23</span>
             </div>
-            <input type="range" id="slider-fade-rate" data-param="fadeRate" data-scale="log" data-min="0.001" data-max="0.40" min="0" max="1000" step="1" value="908">
+            <input type="range" id="slider-fade-rate" data-param="fadeRate" data-scale="log" data-min="0.0001" data-max="0.40" min="0" max="1000" step="1" value="933">
           </div>
 
           <div class="control-group" data-show-for-mode="gpu_particles">
@@ -227,6 +227,13 @@
               <option value="edges">Canvas Edges / Perimeter Only</option>
               <option value="center">Center Core / Radial Burst</option>
             </select>
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
+            <button type="button" id="btn-toggle-spawn" class="glass-btn btn-block" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; width: 100%; cursor: pointer; transition: all 0.2s ease;">
+              <span id="spawn-status-text">🌊 Particle Spawning: <strong style="color: #00f0ff;">ACTIVE</strong></span>
+              <span class="badge" style="font-size: 11px; font-weight: 600; background: rgba(0,240,255,0.15); color: var(--accent-cyan);">Press P</span>
+            </button>
           </div>
 
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
@@ -521,10 +528,11 @@
             <h4>⌨️ Keyboard Shortcuts</h4>
             <ul>
               <li><kbd>Space</kbd> Pause / Resume animation</li>
+              <li><kbd>P</kbd> Stop / Resume Spawning New Particles (Propagate Field)</li>
               <li><kbd>Tab</kbd> or <kbd>H</kbd> Hide / Reveal All HUD Overlays</li>
               <li><kbd>F</kbd> Toggle Fullscreen mode</li>
               <li><kbd>R</kbd> Smart Randomize parameters & palette</li>
-              <li><kbd>C</kbd> Clear canvas trails</li>
+              <li><kbd>C</kbd> Clear canvas trails / re-seed</li>
               <li><kbd>S</kbd> Instant 1080p snapshot</li>
             </ul>
           </div>

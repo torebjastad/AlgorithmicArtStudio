@@ -27,6 +27,7 @@ class FlowFieldMode {
       jitter: 0.05,
       colorCycleSpeed: 0.2,
       spawnMode: 'random',   // 'random', 'edges', 'center'
+      spawnEnabled: true,    // Whether new particles spawn or current ones propagate
       mouseForce: 'none',    // 'none', 'attract', 'repel', 'swirl'
       mouseRadius: 180,
       mouseStrength: 2.0
@@ -172,13 +173,24 @@ class FlowFieldMode {
       this.life[i]++;
       this.colorT[i] = (this.colorT[i] + p.colorCycleSpeed * 0.002) % 1.0;
 
-      // Respawn if dead or out of canvas bounds
-      if (
-        this.life[i] >= this.maxLife[i] ||
-        this.x[i] < -20 || this.x[i] > w + 20 ||
-        this.y[i] < -20 || this.y[i] > h + 20
-      ) {
-        this.resetParticle(i, w, h);
+      // Respawn or retire when dead or out of canvas bounds
+      const isOutOfBounds = (this.x[i] < -20 || this.x[i] > w + 20 || this.y[i] < -20 || this.y[i] > h + 20);
+
+      if (p.spawnEnabled !== false) {
+        if (this.life[i] >= this.maxLife[i] || isOutOfBounds) {
+          this.resetParticle(i, w, h);
+        }
+      } else {
+        if (isOutOfBounds) {
+          this.x[i] = -9999;
+          this.y[i] = -9999;
+          this.prevX[i] = -9999;
+          this.prevY[i] = -9999;
+          this.life[i] = 99999;
+        } else {
+          // Keep current active particle propagating through the field
+          this.life[i] = Math.min(this.life[i], this.maxLife[i] * 0.4);
+        }
       }
     }
   }
@@ -189,8 +201,10 @@ class FlowFieldMode {
     const palette = this.app.palette;
     const ctx = renderer.trailCtx;
 
-    // Apply alpha decay to trails
-    renderer.applyFade(palette.customBg, p.fadeRate);
+    // Apply alpha decay to trails (skip if 0.00 Never Decay)
+    if (p.fadeRate > 0.00001) {
+      renderer.applyFade(palette.customBg, p.fadeRate);
+    }
     renderer.setBlendMode(p.blendMode);
 
     ctx.save();
@@ -199,6 +213,7 @@ class FlowFieldMode {
 
     // Batch draw particle strokes
     for (let i = 0; i < count; i++) {
+      if (this.x[i] < -100 || this.prevX[i] < -100) continue;
       const lifeRatio = this.life[i] / this.maxLife[i];
       // Fade in and fade out curve
       const alpha = Math.sin(lifeRatio * Math.PI);

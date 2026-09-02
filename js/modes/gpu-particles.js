@@ -25,6 +25,7 @@ class GPUParticlesMode {
       glowAlpha: 0.85,
       taperMode: 'intensity', // 'both', 'intensity', 'width', 'none'
       spawnMode: 'random',   // 'random', 'edges', 'center'
+      spawnEnabled: true,    // Whether new particles spawn or current ones propagate
       enableMouse: false,
       mouseForce: 'attract', // 'attract', 'repel', 'swirl'
       mouseRadius: 220,
@@ -90,6 +91,7 @@ class GPUParticlesMode {
       uniform float u_particleSpeed;
       uniform int u_noiseType; // 0: curl, 1: perlin, 2: simplex, 3: vortex
       uniform int u_spawnMode; // 0: random, 1: edges, 2: center
+      uniform int u_spawnEnabled; // 1: normal spawning, 0: stop spawning new particles
       uniform vec2 u_mouse;
       uniform bool u_enableMouse;
       uniform int u_mouseForce; // 0: attract, 1: repel, 2: swirl
@@ -189,14 +191,39 @@ class GPUParticlesMode {
         float maxLife = posLife.w;
         vec2 seed = prevSeed.zw;
 
-        // Respawn when particle expires or leaves the screen
-        if (age >= maxLife || pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0) {
-          vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
-          pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
-          oldPos = pos; // Avoid connecting streak across screen on respawn
-          age = 0.0;
-          maxLife = 100.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 200.0;
-          seed += vec2(0.137, 0.291);
+        // If particle was already retired off-screen and spawning is stopped, stay retired
+        if (u_spawnEnabled == 0 && (pos.x < -100.0 || pos.y < -100.0)) {
+          outPosLife = vec4(-9999.0, -9999.0, 99999.0, maxLife);
+          outPrevSeed = vec4(-9999.0, -9999.0, seed);
+          return;
+        }
+
+        bool isOutOfBounds = (pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0);
+
+        if (u_spawnEnabled == 1) {
+          // Normal mode: Respawn when particle expires or leaves the screen
+          if (age >= maxLife || isOutOfBounds) {
+            vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
+            pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
+            oldPos = pos; // Avoid connecting streak across screen on respawn
+            age = 0.0;
+            maxLife = 100.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 200.0;
+            seed += vec2(0.137, 0.291);
+          }
+        } else {
+          // Stop Spawning Mode:
+          // Existing particles continue propagating through the field until they flow off-screen
+          if (isOutOfBounds) {
+            pos = vec2(-9999.0);
+            oldPos = vec2(-9999.0);
+            age = 99999.0;
+            outPosLife = vec4(pos, age, maxLife);
+            outPrevSeed = vec4(oldPos, seed);
+            return;
+          } else {
+            // Keep current active particle alive at full intensity while propagating through field
+            age = min(age, maxLife * 0.4);
+          }
         }
 
         float t = u_time * 0.04;
@@ -280,6 +307,12 @@ class GPUParticlesMode {
 
         vec2 pos = posLife.xy;
         vec2 prevPos = prevSeed.xy; // Exact historical position from previous frame
+
+        // Discard retired off-screen particles
+        if (pos.x < -100.0 || prevPos.x < -100.0) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
 
         vec2 dir = pos - prevPos;
         float len = length(dir);
@@ -581,6 +614,7 @@ class GPUParticlesMode {
 
     const spawnModeMap = { random: 0, edges: 1, center: 2 };
     gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_spawnMode'), spawnModeMap[p.spawnMode] || 0);
+    gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_spawnEnabled'), (p.spawnEnabled !== false) ? 1 : 0);
 
     const mouseInf = p.enableMouse && (mouse.isHovering || mouse.isDown);
     gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_enableMouse'), mouseInf ? 1 : 0);
@@ -609,6 +643,9 @@ class GPUParticlesMode {
       // Instant clear at high fade rate
       gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
+    } else if (p.fadeRate <= 0.00001) {
+      // 0.00 Mode: Never Decay (infinite trail persistence)
+      // Skip the fade quad completely so trails accumulate permanently!
     } else {
       // Smooth fading motion blur quad
       gl.enable(gl.BLEND);

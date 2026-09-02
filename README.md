@@ -44,6 +44,7 @@ npx serve .
 | Shortcut | Action |
 | :--- | :--- |
 | <kbd>Space</kbd> | Pause / Resume Real-Time Simulation |
+| <kbd>P</kbd> | Stop / Resume Spawning New Particles (Propagate Field) |
 | <kbd>C</kbd> | Clear Canvas / Re-seed Particles |
 | <kbd>R</kbd> | Randomize Palette & Parameters |
 | <kbd>H</kbd> | Toggle Studio HUD Controls |

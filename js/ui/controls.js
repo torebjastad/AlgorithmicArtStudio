@@ -136,6 +136,12 @@ class ControlsManager {
       this.ui.btnRecordVideo.addEventListener('click', () => this.handleRecordVideo());
     }
 
+    // Particle Spawning Toggle Button
+    const btnToggleSpawn = document.getElementById('btn-toggle-spawn');
+    if (btnToggleSpawn) {
+      btnToggleSpawn.addEventListener('click', () => this.toggleSpawning());
+    }
+
     // Sliders & Checkbox Auto-Binding
     this.bindDynamicInputs();
 
@@ -188,8 +194,16 @@ class ControlsManager {
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         this.randomizeParameters();
+      } else if (e.key === 'p' || e.key === 'P' || e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        this.toggleSpawning();
       } else if (e.key === 'c' || e.key === 'C') {
         e.preventDefault();
+        const mode = this.app.currentMode;
+        if (mode && mode.params && mode.params.spawnEnabled === false) {
+          mode.params.spawnEnabled = true;
+          this.updateSpawnUI(true);
+        }
         this.app.resetCurrentMode();
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
@@ -209,6 +223,27 @@ class ControlsManager {
     if (Number.isNaN(rawVal)) {
       return input.value;
     }
+
+    // Special logarithmic mapping for Trail Decay Rate (fadeRate)
+    // Allows 0.00 (Never Decay) at 0, and fine steps between 0.0001 and 0.0010
+    if (input.dataset.param === 'fadeRate') {
+      if (rawVal <= 0) return 0.0;
+      const min = 0.0001;
+      const max = 0.40;
+      const u = (rawVal - 1) / 999;
+      let val = min * Math.pow(max / min, Math.max(0, Math.min(1, u)));
+      if (val < 0.001) {
+        val = Math.round(val * 10000) / 10000;
+      } else if (val < 0.01) {
+        val = Math.round(val * 10000) / 10000;
+      } else if (val < 0.1) {
+        val = Math.round(val * 1000) / 1000;
+      } else {
+        val = Math.round(val * 100) / 100;
+      }
+      return val;
+    }
+
     if (input.dataset.scale === 'log') {
       const min = parseFloat(input.dataset.min || 0.05);
       const max = parseFloat(input.dataset.max || 15.0);
@@ -234,6 +269,20 @@ class ControlsManager {
       input.checked = !!val;
       return;
     }
+
+    if (input.dataset.param === 'fadeRate') {
+      if (val <= 0.00001) {
+        input.value = 0;
+        return;
+      }
+      const min = 0.0001;
+      const max = 0.40;
+      const safeVal = Math.max(min, Math.min(max, val));
+      const u = Math.log(safeVal / min) / Math.log(max / min);
+      input.value = Math.round(1 + u * 999);
+      return;
+    }
+
     if (input.dataset.scale === 'log') {
       const min = parseFloat(input.dataset.min || 0.05);
       const max = parseFloat(input.dataset.max || 15.0);
@@ -247,9 +296,16 @@ class ControlsManager {
     }
   }
 
-  formatBadge(val) {
+  formatBadge(val, paramKey) {
     if (typeof val !== 'number') return val;
+    if (paramKey === 'fadeRate') {
+      if (val <= 0.00001) return '0.00 (Never Decay)';
+      if (val < 0.01) return val.toFixed(4);
+      if (val < 0.1) return val.toFixed(3);
+      return val.toFixed(2);
+    }
     if (val >= 100 && Math.abs(val - Math.round(val)) < 0.001) return Math.round(val).toLocaleString();
+    if (val < 0.001) return val.toFixed(4);
     if (val < 0.01) return val.toFixed(4);
     if (val < 0.1) return val.toFixed(3);
     if (val < 10) return val.toFixed(2);
@@ -275,7 +331,7 @@ class ControlsManager {
         mode.params[paramKey] = val;
 
         if (badge) {
-          badge.textContent = this.formatBadge(val);
+          badge.textContent = this.formatBadge(val, paramKey);
         }
 
         if ((paramKey === 'particleCount' || paramKey === 'spawnMode') && typeof mode.resetAllParticles === 'function') {
@@ -404,10 +460,15 @@ class ControlsManager {
         const badge = input.closest('.control-group')?.querySelector('.val-badge') ||
                       document.querySelector(`[data-badge="${paramKey}"]`);
         if (badge) {
-          badge.textContent = this.formatBadge(val);
+          badge.textContent = this.formatBadge(val, paramKey);
         }
       }
     });
+
+    // Sync Particle Spawning Button status
+    if (mode.params && mode.params.spawnEnabled !== undefined) {
+      this.updateSpawnUI(mode.params.spawnEnabled !== false);
+    }
   }
 
   randomizeParameters() {
@@ -522,6 +583,45 @@ class ControlsManager {
         this.ui.exportModal.classList.remove('active');
       }
     );
+  }
+
+  toggleSpawning() {
+    const mode = this.app.currentMode;
+    if (!mode || !mode.params) return;
+
+    const current = mode.params.spawnEnabled !== false;
+    const next = !current;
+    mode.params.spawnEnabled = next;
+
+    this.updateSpawnUI(next);
+    this.showNotification(next ? '🌊 Spawning: RESUMED' : '⏸️ Spawning: STOPPED (Propagating Field)');
+  }
+
+  updateSpawnUI(enabled) {
+    const btn = document.getElementById('btn-toggle-spawn');
+    const text = document.getElementById('spawn-status-text');
+    if (btn && text) {
+      if (enabled) {
+        text.innerHTML = '🌊 Particle Spawning: <strong style="color: #00f0ff;">ACTIVE</strong>';
+        btn.style.borderColor = 'rgba(0, 240, 255, 0.4)';
+        btn.style.background = 'rgba(0, 240, 255, 0.08)';
+      } else {
+        text.innerHTML = '⏸️ Particle Spawning: <strong style="color: #ffaa00;">STOPPED</strong>';
+        btn.style.borderColor = 'rgba(255, 170, 0, 0.6)';
+        btn.style.background = 'rgba(255, 170, 0, 0.15)';
+      }
+    }
+  }
+
+  showNotification(message, duration = 2200) {
+    if (!this.ui.hudToast) return;
+    this.ui.hudToast.textContent = message;
+    this.ui.hudToast.classList.add('active');
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => {
+      this.ui.hudToast.classList.remove('active');
+      this.ui.hudToast.textContent = 'HUD Hidden (Press H)';
+    }, duration);
   }
 }
 
