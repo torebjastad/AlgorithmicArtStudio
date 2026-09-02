@@ -5,6 +5,28 @@
 
 const ART_PRESETS = [
   {
+    id: 'gpu_cosmic_superflow_default',
+    name: '🌟 Cosmic Super-Flow (Master)',
+    mode: 'gpu_particles',
+    palette: 'cyberpunk',
+    params: {
+      particleCount: 262144,
+      noiseType: 'curl',
+      noiseScale: 0.0006,
+      octaves: 3,
+      persistence: 0.5,
+      lacunarity: 2.0,
+      timeSpeed: 0.003,
+      particleSpeed: 0.19,
+      strokeWidth: 2.0,
+      streakLength: 0.94,
+      fadeRate: 0.23,
+      glowAlpha: 0.85,
+      taperMode: 'both',
+      spawnMode: 'random'
+    }
+  },
+  {
     id: 'gpu_supernova',
     name: '✨ 500k Stardust Nebula (GPU)',
     mode: 'gpu_particles',

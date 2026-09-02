@@ -13,14 +13,15 @@ class GPUParticlesMode {
     this.params = {
       particleCount: 262144, // 512x512 = 262,144 particles (up to 1024x1024 = 1,048,576)
       noiseType: 'curl',     // 'curl', 'perlin', 'simplex', 'vortex'
-      noiseScale: 0.0028,
+      noiseScale: 0.0006,    // Ultra-wide cosmic flow scale
       octaves: 3,
       persistence: 0.5,
       lacunarity: 2.0,
       timeSpeed: 0.003,
-      particleSpeed: 0.3,    // Serene default speed
-      strokeWidth: 1.4,      // Anti-aliased line thickness
-      fadeRate: 0.04,        // Motion blur decay rate (0.001 to 0.40)
+      particleSpeed: 0.19,   // Exact user calibrated velocity
+      strokeWidth: 2.0,      // Anti-aliased line thickness
+      streakLength: 0.94,    // Streamline tail length
+      fadeRate: 0.23,        // Motion blur decay rate
       glowAlpha: 0.85,
       taperMode: 'both',     // 'both', 'intensity', 'width', 'none'
       spawnMode: 'random',   // 'random', 'edges', 'center'

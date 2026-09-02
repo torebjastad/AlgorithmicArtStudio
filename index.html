@@ -123,9 +123,9 @@
           <div class="control-group" data-show-for-mode="flow,gpu_particles,topographic,terrain3d,ribbons">
             <div class="label-row">
               <label for="slider-scale">Noise Scale / Frequency</label>
-              <span class="val-badge" data-badge="noiseScale">0.0028</span>
+              <span class="val-badge" data-badge="noiseScale">0.0006</span>
             </div>
-            <input type="range" id="slider-scale" data-param="noiseScale" data-scale="log" data-min="0.0001" data-max="0.025" min="0" max="1000" step="1" value="604">
+            <input type="range" id="slider-scale" data-param="noiseScale" data-scale="log" data-min="0.0001" data-max="0.025" min="0" max="1000" step="1" value="325">
           </div>
 
           <div class="control-group" data-show-for-mode="domain_warp">
@@ -147,7 +147,7 @@
           <div class="control-group">
             <div class="label-row">
               <label for="slider-octaves">fBm Octaves (Harmonic Detail)</label>
-              <span class="val-badge" data-badge="octaves">3</span>
+              <span class="val-badge" data-badge="octaves">3.00</span>
             </div>
             <input type="range" id="slider-octaves" data-param="octaves" min="1" max="8" step="1" value="3">
           </div>
@@ -171,9 +171,9 @@
           <div class="control-group">
             <div class="label-row">
               <label for="slider-time-speed">Evolution / Time Speed</label>
-              <span class="val-badge" data-badge="timeSpeed">0.002</span>
+              <span class="val-badge" data-badge="timeSpeed">0.0030</span>
             </div>
-            <input type="range" id="slider-time-speed" data-param="timeSpeed" min="0.0" max="0.02" step="0.0005" value="0.002">
+            <input type="range" id="slider-time-speed" data-param="timeSpeed" min="0.0" max="0.02" step="0.0005" value="0.003">
           </div>
         </section>
 
@@ -183,9 +183,9 @@
           <div class="control-group" data-show-for-mode="gpu_particles">
             <div class="label-row">
               <label for="slider-gpu-count">GPU Particle Count (100 to 1,000,000)</label>
-              <span class="val-badge" data-badge="particleCount">250,000</span>
+              <span class="val-badge" data-badge="particleCount">262,144</span>
             </div>
-            <input type="range" id="slider-gpu-count" data-param="particleCount" data-scale="log" data-min="100" data-max="1000000" min="0" max="1000" step="1" value="850">
+            <input type="range" id="slider-gpu-count" data-param="particleCount" data-scale="log" data-min="100" data-max="1000000" min="0" max="1000" step="1" value="855">
           </div>
 
           <!-- CPU Particle Count Slider -->
@@ -200,17 +200,17 @@
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <div class="label-row">
               <label for="slider-particle-speed">Particle Flow Velocity</label>
-              <span class="val-badge" data-badge="particleSpeed">0.30</span>
+              <span class="val-badge" data-badge="particleSpeed">0.19</span>
             </div>
-            <input type="range" id="slider-particle-speed" data-param="particleSpeed" data-scale="log" data-min="0.05" data-max="15.0" min="0" max="1000" step="1" value="314">
+            <input type="range" id="slider-particle-speed" data-param="particleSpeed" data-scale="log" data-min="0.05" data-max="15.0" min="0" max="1000" step="1" value="234">
           </div>
 
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <div class="label-row">
               <label for="slider-fade-rate">Trail Decay Rate (Motion Blur)</label>
-              <span class="val-badge" data-badge="fadeRate">0.0400</span>
+              <span class="val-badge" data-badge="fadeRate">0.23</span>
             </div>
-            <input type="range" id="slider-fade-rate" data-param="fadeRate" data-scale="log" data-min="0.001" data-max="0.40" min="0" max="1000" step="1" value="616">
+            <input type="range" id="slider-fade-rate" data-param="fadeRate" data-scale="log" data-min="0.001" data-max="0.40" min="0" max="1000" step="1" value="908">
           </div>
 
           <div class="control-group" data-show-for-mode="gpu_particles">
@@ -223,7 +223,7 @@
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <label for="select-spawn-mode">Particle Spawn Origin</label>
             <select id="select-spawn-mode" class="glass-select" data-param="spawnMode">
-              <option value="random">Full Canvas (Random Everywhere)</option>
+              <option value="random" selected>Full Canvas (Random Everywhere)</option>
               <option value="edges">Canvas Edges / Perimeter Only</option>
               <option value="center">Center Core / Radial Burst</option>
             </select>
@@ -232,7 +232,7 @@
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <label for="select-mouse-force">Mouse Force Type</label>
             <select id="select-mouse-force" class="glass-select" data-param="mouseForce">
-              <option value="attract">Gravity Attraction</option>
+              <option value="attract" selected>Gravity Attraction</option>
               <option value="repel">Magnetic Repulsion</option>
               <option value="swirl">Vortex Cyclone Swirl</option>
               <option value="none">None (Ambient Noise Only)</option>
@@ -261,23 +261,23 @@
           <div class="control-group" data-show-for-mode="gpu_particles">
             <div class="label-row">
               <label for="slider-streak-length">Streamline Streak Length</label>
-              <span class="val-badge" data-badge="streakLength">4.00</span>
+              <span class="val-badge" data-badge="streakLength">0.94</span>
             </div>
-            <input type="range" id="slider-streak-length" data-param="streakLength" data-scale="log" data-min="0.5" data-max="100.0" min="0" max="1000" step="1" value="392">
+            <input type="range" id="slider-streak-length" data-param="streakLength" data-scale="log" data-min="0.5" data-max="100.0" min="0" max="1000" step="1" value="119">
           </div>
 
           <div class="control-group" data-show-for-mode="gpu_particles">
             <div class="label-row">
               <label for="slider-glow-alpha">Glow Alpha Intensity</label>
-              <span class="val-badge" data-badge="glowAlpha">0.90</span>
+              <span class="val-badge" data-badge="glowAlpha">0.85</span>
             </div>
-            <input type="range" id="slider-glow-alpha" data-param="glowAlpha" min="0.1" max="2.0" step="0.05" value="0.90">
+            <input type="range" id="slider-glow-alpha" data-param="glowAlpha" min="0.1" max="2.0" step="0.05" value="0.85">
           </div>
 
           <div class="control-group" data-show-for-mode="gpu_particles">
             <label for="select-taper-mode">Trail End Decay / Taper Style</label>
             <select id="select-taper-mode" class="glass-select" data-param="taperMode">
-              <option value="both">Intensity + Width Fade (Feathered Needle)</option>
+              <option value="both" selected>Intensity + Width Fade (Feathered Needle)</option>
               <option value="intensity">Intensity Fade Only (Constant Width)</option>
               <option value="width">Width Fade Only (Solid Razor Needle)</option>
               <option value="none">Uniform Ribbon (No Taper)</option>
@@ -287,9 +287,9 @@
           <div class="control-group" data-show-for-mode="flow,gpu_particles,topographic,terrain3d,ribbons">
             <div class="label-row">
               <label for="slider-stroke-width">Stroke Line Width</label>
-              <span class="val-badge" data-badge="strokeWidth">1.40</span>
+              <span class="val-badge" data-badge="strokeWidth">2.00</span>
             </div>
-            <input type="range" id="slider-stroke-width" data-param="strokeWidth" min="0.5" max="8.0" step="0.1" value="1.4">
+            <input type="range" id="slider-stroke-width" data-param="strokeWidth" min="0.5" max="8.0" step="0.1" value="2.0">
           </div>
 
           <div class="control-group" data-show-for-mode="flow">
