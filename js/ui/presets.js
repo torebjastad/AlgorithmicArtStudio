@@ -22,7 +22,7 @@ const ART_PRESETS = [
       streakLength: 0.94,
       fadeRate: 0.23,
       glowAlpha: 0.85,
-      taperMode: 'both',
+      taperMode: 'intensity',
       spawnMode: 'random'
     }
   },

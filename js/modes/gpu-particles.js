@@ -23,7 +23,7 @@ class GPUParticlesMode {
       streakLength: 0.94,    // Streamline tail length
       fadeRate: 0.23,        // Motion blur decay rate
       glowAlpha: 0.85,
-      taperMode: 'both',     // 'both', 'intensity', 'width', 'none'
+      taperMode: 'intensity', // 'both', 'intensity', 'width', 'none'
       spawnMode: 'random',   // 'random', 'edges', 'center'
       enableMouse: false,
       mouseForce: 'attract', // 'attract', 'repel', 'swirl'
