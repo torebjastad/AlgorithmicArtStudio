@@ -1,5 +1,5 @@
 /**
- * Curated Artistic Presets for Perlin Noise Studio
+ * Curated Artistic Presets for Algorithmic Art Studio
  * 20+ master handcrafted presets spanning all generative modes
  */
 

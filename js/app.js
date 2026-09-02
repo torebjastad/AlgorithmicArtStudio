@@ -3,7 +3,7 @@
  * Manages canvas lifecycle, mode switching, mouse tracking, and 60+ FPS animation loop.
  */
 
-class PerlinArtApp {
+class AlgorithmicArtStudio {
   constructor() {
     this.canvas2D = document.getElementById('canvas-2d');
     this.canvasGL = document.getElementById('canvas-gl');
@@ -203,7 +203,10 @@ class PerlinArtApp {
   }
 }
 
+window.AlgorithmicArtStudio = AlgorithmicArtStudio;
+window.PerlinArtApp = AlgorithmicArtStudio;
+
 // Bootstrap once DOM ready
 window.addEventListener('DOMContentLoaded', () => {
-  window.app = new PerlinArtApp();
+  window.app = new AlgorithmicArtStudio();
 });

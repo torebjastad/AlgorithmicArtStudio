@@ -1,0 +1,24 @@
+{
+  "name": "algorithmic-art-studio",
+  "version": "2.0.0",
+  "description": "Lightning-fast WebGL2 & GPGPU generative art studio powered by Curl, Simplex, and Perlin noise vector fields, Domain Warping, and 4K/8K export.",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "generative-art",
+    "webgl2",
+    "gpgpu",
+    "vector-fields",
+    "curl-noise",
+    "simplex-noise",
+    "perlin-noise",
+    "flow-fields",
+    "domain-warping",
+    "topography",
+    "procedural"
+  ],
+  "author": "Tore Grüner",
+  "license": "MIT"
+}

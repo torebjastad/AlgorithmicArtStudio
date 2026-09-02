@@ -20,7 +20,7 @@ class Exporter {
       height = 2160,
       format = 'image/png',
       quality = 0.95,
-      filename = `perlin_art_${Date.now()}`
+      filename = `algorithmic_art_${Date.now()}`
     } = options;
 
     // Create offscreen canvas for high-res render
@@ -51,7 +51,7 @@ class Exporter {
   /**
    * Export vector SVG (for Topographic and Ribbon modes)
    */
-  exportSVG(filename = `perlin_vector_${Date.now()}`) {
+  exportSVG(filename = `algorithmic_vector_${Date.now()}`) {
     const currentMode = this.app.currentMode;
     if (currentMode && typeof currentMode.toSVG === 'function') {
       const svgString = currentMode.toSVG();
@@ -95,7 +95,7 @@ class Exporter {
     this.mediaRecorder.onstop = () => {
       const blob = new Blob(this.recordedChunks, { type: selectedMime });
       const url = URL.createObjectURL(blob);
-      this.downloadDataUrl(url, `perlin_animation_${Date.now()}.webm`);
+      this.downloadDataUrl(url, `algorithmic_animation_${Date.now()}.webm`);
       this.isRecording = false;
       if (onComplete) onComplete();
     };
