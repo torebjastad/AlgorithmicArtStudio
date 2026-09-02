@@ -199,30 +199,26 @@ class GPUParticlesMode {
         }
 
         bool isOutOfBounds = (pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0);
+        bool isDead = (age >= maxLife || isOutOfBounds);
 
-        if (u_spawnEnabled == 1) {
-          // Normal mode: Respawn when particle expires or leaves the screen
-          if (age >= maxLife || isOutOfBounds) {
+        if (isDead) {
+          if (u_spawnEnabled == 1) {
+            // Normal mode: Respawn new particle at spawn origin
             vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
             pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
             oldPos = pos; // Avoid connecting streak across screen on respawn
             age = 0.0;
-            maxLife = 100.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 200.0;
+            // Scale lifetime with speed so particles have time to traverse the entire field
+            maxLife = (180.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
             seed += vec2(0.137, 0.291);
-          }
-        } else {
-          // Stop Spawning Mode:
-          // Existing particles continue propagating through the field until they flow off-screen
-          if (isOutOfBounds) {
+          } else {
+            // Spawning Stopped Mode: Do not spawn a new particle; retire off-screen
             pos = vec2(-9999.0);
             oldPos = vec2(-9999.0);
             age = 99999.0;
             outPosLife = vec4(pos, age, maxLife);
             outPrevSeed = vec4(oldPos, seed);
             return;
-          } else {
-            // Keep current active particle alive at full intensity while propagating through field
-            age = min(age, maxLife * 0.4);
           }
         }
 
@@ -300,6 +296,7 @@ class GPUParticlesMode {
       uniform vec2 u_resolution;
       uniform float u_strokeWidth;
       uniform int u_taperMode; // 0: both, 1: intensity only, 2: width only, 3: none / uniform
+      uniform float u_fadeRate;
 
       void main() {
         vec4 posLife = texture(u_posLifeTex, a_particleUv);
@@ -326,22 +323,28 @@ class GPUParticlesMode {
         float alphaMultiplier = 1.0;
         float widthMultiplier = 1.0;
 
-        if (u_taperMode == 0) {
-          // Both: Intensity Fade + Width Needle Taper
-          alphaMultiplier = lifeCurve;
-          widthMultiplier = mix(0.30, 1.0, lifeCurve);
-        } else if (u_taperMode == 1) {
-          // Intensity Fade Only (Constant Stroke Width)
-          alphaMultiplier = lifeCurve;
-          widthMultiplier = 1.0;
-        } else if (u_taperMode == 2) {
-          // Width Fade Only (Full Opacity, Solid Needle to Point)
+        if (u_fadeRate <= 0.00001) {
+          // Never Decay mode (0.00): lines do NOT taper off or fade away!
           alphaMultiplier = 1.0;
-          widthMultiplier = mix(0.0, 1.0, lifeCurve);
+          widthMultiplier = 1.0;
         } else {
-          // None: Uniform Constant Ribbon
-          alphaMultiplier = 1.0;
-          widthMultiplier = 1.0;
+          if (u_taperMode == 0) {
+            // Both: Intensity Fade + Width Needle Taper
+            alphaMultiplier = lifeCurve;
+            widthMultiplier = mix(0.30, 1.0, lifeCurve);
+          } else if (u_taperMode == 1) {
+            // Intensity Fade Only (Constant Stroke Width)
+            alphaMultiplier = lifeCurve;
+            widthMultiplier = 1.0;
+          } else if (u_taperMode == 2) {
+            // Width Fade Only (Full Opacity, Solid Needle to Point)
+            alphaMultiplier = 1.0;
+            widthMultiplier = mix(0.0, 1.0, lifeCurve);
+          } else {
+            // None: Uniform Constant Ribbon
+            alphaMultiplier = 1.0;
+            widthMultiplier = 1.0;
+          }
         }
 
         float halfWidth = max(0.4, u_strokeWidth * 0.5) * widthMultiplier;
@@ -455,7 +458,8 @@ class GPUParticlesMode {
         ry = Math.random() * h;
       }
 
-      const maxLife = 80 + Math.random() * 180;
+      const speedScale = Math.max(1.0, 1.6 / Math.max(0.01, this.params.particleSpeed));
+      const maxLife = (180 + Math.random() * 360) * speedScale;
       const age = Math.random() * maxLife;
 
       posLifeData[i * 4] = rx;
@@ -683,6 +687,7 @@ class GPUParticlesMode {
 
     const taperModeMap = { both: 0, intensity: 1, width: 2, none: 3 };
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_taperMode'), taperModeMap[p.taperMode] ?? 0);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_fadeRate'), p.fadeRate);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palA'), cosParams.a[0], cosParams.a[1], cosParams.a[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palB'), cosParams.b[0], cosParams.b[1], cosParams.b[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palC'), cosParams.c[0], cosParams.c[1], cosParams.c[2]);

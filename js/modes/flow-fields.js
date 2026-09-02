@@ -75,7 +75,8 @@ class FlowFieldMode {
     this.prevY[i] = this.y[i];
     this.vx[i] = 0;
     this.vy[i] = 0;
-    this.maxLife[i] = 60 + Math.random() * 200;
+    const speedScale = Math.max(1.0, 1.6 / Math.max(0.01, this.params.particleSpeed));
+    this.maxLife[i] = (180 + Math.random() * 360) * speedScale;
     this.life[i] = Math.random() * this.maxLife[i];
     this.colorT[i] = Math.random();
     this.strokeW[i] = 0.5 + Math.random() * this.params.strokeWidth;
@@ -175,21 +176,17 @@ class FlowFieldMode {
 
       // Respawn or retire when dead or out of canvas bounds
       const isOutOfBounds = (this.x[i] < -20 || this.x[i] > w + 20 || this.y[i] < -20 || this.y[i] > h + 20);
+      const isDead = (this.life[i] >= this.maxLife[i] || isOutOfBounds);
 
-      if (p.spawnEnabled !== false) {
-        if (this.life[i] >= this.maxLife[i] || isOutOfBounds) {
+      if (isDead) {
+        if (p.spawnEnabled !== false) {
           this.resetParticle(i, w, h);
-        }
-      } else {
-        if (isOutOfBounds) {
+        } else {
           this.x[i] = -9999;
           this.y[i] = -9999;
           this.prevX[i] = -9999;
           this.prevY[i] = -9999;
           this.life[i] = 99999;
-        } else {
-          // Keep current active particle propagating through the field
-          this.life[i] = Math.min(this.life[i], this.maxLife[i] * 0.4);
         }
       }
     }
@@ -214,14 +211,17 @@ class FlowFieldMode {
     // Batch draw particle strokes
     for (let i = 0; i < count; i++) {
       if (this.x[i] < -100 || this.prevX[i] < -100) continue;
-      const lifeRatio = this.life[i] / this.maxLife[i];
-      // Fade in and fade out curve
-      const alpha = Math.sin(lifeRatio * Math.PI);
-      if (alpha <= 0.01) continue;
+
+      let alpha = 1.0;
+      if (p.fadeRate > 0.00001) {
+        const lifeRatio = this.life[i] / this.maxLife[i];
+        alpha = Math.sin(lifeRatio * Math.PI);
+        if (alpha <= 0.01) continue;
+      }
 
       const speedVal = Math.hypot(this.vx[i], this.vy[i]);
       let width = this.strokeW[i];
-      if (p.taperWidth) {
+      if (p.taperWidth && p.fadeRate > 0.00001) {
         width *= (0.3 + 0.7 * alpha) * (0.8 + Math.min(speedVal, 4.0) * 0.3);
       }
 
