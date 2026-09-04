@@ -223,15 +223,15 @@ class ControlsManager {
     }
 
     // Special logarithmic mapping for Trail Decay Rate (fadeRate)
-    // Allows 0.00 (Never Decay) at 0, and fine steps between 0.0001 and 0.0010
+    // Allows 0.00 (Never Decay) at 0, and fine steps between 0.00001 and 0.40
     if (input.dataset.param === 'fadeRate') {
       if (rawVal <= 0) return 0.0;
-      const min = 0.0001;
+      const min = 0.00001;
       const max = 0.40;
       const u = (rawVal - 1) / 999;
       let val = min * Math.pow(max / min, Math.max(0, Math.min(1, u)));
       if (val < 0.001) {
-        val = Math.round(val * 10000) / 10000;
+        val = Math.round(val * 100000) / 100000;
       } else if (val < 0.01) {
         val = Math.round(val * 10000) / 10000;
       } else if (val < 0.1) {
@@ -269,11 +269,11 @@ class ControlsManager {
     }
 
     if (input.dataset.param === 'fadeRate') {
-      if (val <= 0.00001) {
+      if (val <= 0.000005) {
         input.value = 0;
         return;
       }
-      const min = 0.0001;
+      const min = 0.00001;
       const max = 0.40;
       const safeVal = Math.max(min, Math.min(max, val));
       const u = Math.log(safeVal / min) / Math.log(max / min);
@@ -297,7 +297,8 @@ class ControlsManager {
   formatBadge(val, paramKey) {
     if (typeof val !== 'number') return val;
     if (paramKey === 'fadeRate') {
-      if (val <= 0.00001) return '0.00 (Never Decay)';
+      if (val <= 0.000005) return '0.00 (Never Decay)';
+      if (val < 0.001) return val.toFixed(5);
       if (val < 0.01) return val.toFixed(4);
       if (val < 0.1) return val.toFixed(3);
       return val.toFixed(2);

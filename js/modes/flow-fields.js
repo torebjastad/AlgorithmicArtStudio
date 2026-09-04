@@ -224,7 +224,7 @@ class FlowFieldMode {
 
       // Respawn or retire when dead or out of canvas bounds
       const isOutOfBounds = (this.x[i] < -20 || this.x[i] > w + 20 || this.y[i] < -20 || this.y[i] > h + 20);
-      const isDead = (p.fadeRate <= 0.00001) ? isOutOfBounds : (this.life[i] >= this.maxLife[i] || isOutOfBounds);
+      const isDead = (p.fadeRate <= 0.000005) ? isOutOfBounds : (this.life[i] >= this.maxLife[i] || isOutOfBounds);
 
       if (isDead) {
         if (p.spawnEnabled !== false) {
@@ -247,7 +247,7 @@ class FlowFieldMode {
     const ctx = renderer.trailCtx;
 
     // Apply alpha decay to trails (skip if 0.00 Never Decay)
-    if (p.fadeRate > 0.00001) {
+    if (p.fadeRate > 0.000005) {
       renderer.applyFade(palette.customBg, p.fadeRate);
     }
     renderer.setBlendMode(p.blendMode);
@@ -261,7 +261,7 @@ class FlowFieldMode {
       if (this.x[i] < -100 || this.prevX[i] < -100) continue;
 
       let alpha = 1.0;
-      if (p.fadeRate > 0.00001) {
+      if (p.fadeRate > 0.000005) {
         const lifeRatio = this.life[i] / this.maxLife[i];
         alpha = Math.sin(lifeRatio * Math.PI);
         if (alpha <= 0.01) continue;
@@ -269,7 +269,7 @@ class FlowFieldMode {
 
       const speedVal = Math.hypot(this.vx[i], this.vy[i]);
       let width = this.strokeW[i];
-      if (p.taperWidth && p.fadeRate > 0.00001) {
+      if (p.taperWidth && p.fadeRate > 0.000005) {
         width *= (0.3 + 0.7 * alpha) * (0.8 + Math.min(speedVal, 4.0) * 0.3);
       }
 

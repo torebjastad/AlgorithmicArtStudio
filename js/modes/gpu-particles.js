@@ -237,7 +237,7 @@ class GPUParticlesMode {
         bool isOutOfBounds = (pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0);
         // At fadeRate == 0 (Never Decay), particles propagate all the way until they exit the canvas bounds,
         // so trails never stop abruptly in the middle of the screen!
-        bool isDead = (u_fadeRate <= 0.00001) ? isOutOfBounds : (age >= maxLife || isOutOfBounds);
+        bool isDead = (u_fadeRate <= 0.000005) ? isOutOfBounds : (age >= maxLife || isOutOfBounds);
 
         if (isDead) {
           if (u_spawnEnabled == 1) {
@@ -368,7 +368,7 @@ class GPUParticlesMode {
         float alphaMultiplier = 1.0;
         float widthMultiplier = 1.0;
 
-        if (u_fadeRate <= 0.00001) {
+        if (u_fadeRate <= 0.000005) {
           // Never Decay mode (0.00): lines do NOT taper off or fade away!
           alphaMultiplier = 1.0;
           widthMultiplier = 1.0;
@@ -498,7 +498,7 @@ class GPUParticlesMode {
 
       void main() {
         vec3 prev = texture(u_trailTex, v_uv).rgb;
-        if (u_fadeRate <= 0.00001) {
+        if (u_fadeRate <= 0.000005) {
           fragColor = vec4(prev, 1.0);
           return;
         }
