@@ -11,7 +11,6 @@ class ControlsManager {
     this.initUI();
     this.bindEvents();
     this.buildPaletteGrid();
-    this.buildPresetBar();
   }
 
   initUI() {
@@ -27,7 +26,6 @@ class ControlsManager {
       infoModalBtn: document.getElementById('btn-open-info'),
       
       modeSelect: document.getElementById('select-mode'),
-      presetList: document.getElementById('preset-bar'),
       paletteGrid: document.getElementById('palette-grid'),
       
       fpsCounter: document.getElementById('val-fps'),
@@ -356,45 +354,6 @@ class ControlsManager {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === tabId));
     this.activeTab = tabId;
-  }
-
-  buildPresetBar() {
-    if (!this.ui.presetList) return;
-    this.ui.presetList.innerHTML = '';
-
-    ART_PRESETS.forEach(preset => {
-      const btn = document.createElement('button');
-      btn.className = 'preset-chip';
-      btn.textContent = preset.name;
-      btn.addEventListener('click', () => this.applyPreset(preset));
-      this.ui.presetList.appendChild(btn);
-    });
-  }
-
-  applyPreset(preset) {
-    if (this.ui.modeSelect) {
-      this.ui.modeSelect.value = preset.mode;
-    }
-    this.app.switchMode(preset.mode);
-    this.app.palette.setPalette(preset.palette);
-
-    const mode = this.app.currentMode;
-    if (mode && preset.params) {
-      Object.assign(mode.params, preset.params);
-      if (typeof mode.resetAllParticles === 'function') {
-        mode.resetAllParticles();
-      }
-    }
-
-    this.app.resetCurrentMode();
-    this.syncControlsWithMode();
-    this.highlightActivePreset(preset.id);
-  }
-
-  highlightActivePreset(presetId) {
-    document.querySelectorAll('.preset-chip').forEach(btn => {
-      btn.classList.toggle('active', btn.textContent.includes(presetId));
-    });
   }
 
   buildPaletteGrid() {

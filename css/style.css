@@ -226,51 +226,6 @@ canvas {
   border: 1px solid rgba(0, 240, 255, 0.3);
 }
 
-/* Presets Bar */
-.preset-scroll-container {
-  flex: 1;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  display: flex;
-  align-items: center;
-}
-
-.preset-scroll-container::-webkit-scrollbar {
-  display: none;
-}
-
-.preset-bar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.preset-chip {
-  padding: 6px 14px;
-  border-radius: 30px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-main);
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.preset-chip:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.preset-chip.active {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.3), rgba(255, 0, 127, 0.3));
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-}
-
 /* Stats and Buttons */
 .hud-actions {
   display: flex;
