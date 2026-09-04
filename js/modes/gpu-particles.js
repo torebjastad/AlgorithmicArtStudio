@@ -235,9 +235,8 @@ class GPUParticlesMode {
         }
 
         bool isOutOfBounds = (pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0);
-        // At fadeRate == 0 (Never Decay), particles propagate all the way until they exit the canvas bounds,
-        // so trails never stop abruptly in the middle of the screen!
-        bool isDead = (u_fadeRate <= 0.000005) ? isOutOfBounds : (age >= maxLife || isOutOfBounds);
+        // Particles propagate all the way until they exit canvas bounds (no mid-screen despawn)
+        bool isDead = isOutOfBounds || (age >= 100000.0);
 
         if (isDead) {
           if (u_spawnEnabled == 1) {
@@ -360,35 +359,26 @@ class GPUParticlesMode {
         vec2 uDir = (len > 0.0001) ? dir / len : vec2(1.0, 0.0);
         vec2 vDir = vec2(-uDir.y, uDir.x);
 
-        float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
-
-        // Keep 100% full brilliance throughout flight; if taper is enabled, taper only in the final 8% of life
-        float lifeCurve = smoothstep(1.0, 0.92, lifeRatio);
+        // Maintain 100% full brilliance across canvas; taper smoothly when exiting canvas borders
+        float distToEdge = min(min(pos.x, u_resolution.x - pos.x), min(pos.y, u_resolution.y - pos.y));
+        float edgeTaper = clamp((distToEdge + 35.0) / 35.0, 0.0, 1.0);
 
         float alphaMultiplier = 1.0;
         float widthMultiplier = 1.0;
 
-        if (u_fadeRate <= 0.000005) {
-          // Never Decay mode (0.00): lines do NOT taper off or fade away!
-          alphaMultiplier = 1.0;
-          widthMultiplier = 1.0;
-        } else {
+        if (u_fadeRate > 0.000005) {
           if (u_taperMode == 0) {
-            // Both: Intensity Fade + Width Needle Taper (feathered needle tip at end of life)
-            alphaMultiplier = lifeCurve;
-            widthMultiplier = mix(0.10, 1.0, lifeCurve);
+            // Both: Intensity Fade + Width Needle Taper near boundary exit
+            alphaMultiplier = edgeTaper;
+            widthMultiplier = mix(0.10, 1.0, edgeTaper);
           } else if (u_taperMode == 1) {
-            // Intensity Fade Only (Constant Stroke Width)
-            alphaMultiplier = lifeCurve;
+            // Intensity Fade Only
+            alphaMultiplier = edgeTaper;
             widthMultiplier = 1.0;
           } else if (u_taperMode == 2) {
-            // Width Fade Only (Full Opacity, Solid Razor Needle)
+            // Width Fade Only
             alphaMultiplier = 1.0;
-            widthMultiplier = mix(0.0, 1.0, lifeCurve);
-          } else {
-            // None: Uniform Constant Ribbon (Crisp & Continuous)
-            alphaMultiplier = 1.0;
-            widthMultiplier = 1.0;
+            widthMultiplier = edgeTaper;
           }
         }
 
@@ -495,6 +485,14 @@ class GPUParticlesMode {
       uniform sampler2D u_trailTex;
       uniform vec3 u_bgColor;
       uniform float u_fadeRate;
+      uniform float u_time;
+
+      // Fast high-precision hash for sub-LSB stochastic dithering
+      float hash12(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.xx + p3.yz) * p3.zy).x;
+      }
 
       void main() {
         vec3 prev = texture(u_trailTex, v_uv).rgb;
@@ -504,21 +502,29 @@ class GPUParticlesMode {
         }
 
         vec3 diff = prev - u_bgColor;
+        float maxDiff = max(abs(diff.r), max(abs(diff.g), abs(diff.b)));
+
+        // Snap cleanly to background when difference is completely imperceptible
+        if (maxDiff < 0.001) {
+          fragColor = vec4(u_bgColor, 1.0);
+          return;
+        }
+
+        // Exponential decay towards background
         vec3 col = mix(prev, u_bgColor, u_fadeRate);
 
-        // Floor-buster: snap to background when within ~4 LSBs, and guarantee minimum step
-        float maxDiff = max(abs(diff.r), max(abs(diff.g), abs(diff.b)));
-        if (maxDiff < 0.016) {
-          col = u_bgColor;
-        } else {
-          col -= sign(diff) * (1.5 / 255.0);
-          if (diff.r > 0.0 && col.r < u_bgColor.r) col.r = u_bgColor.r;
-          if (diff.r < 0.0 && col.r > u_bgColor.r) col.r = u_bgColor.r;
-          if (diff.g > 0.0 && col.g < u_bgColor.g) col.g = u_bgColor.g;
-          if (diff.g < 0.0 && col.g > u_bgColor.g) col.g = u_bgColor.g;
-          if (diff.b > 0.0 && col.b < u_bgColor.b) col.b = u_bgColor.b;
-          if (diff.b < 0.0 && col.b > u_bgColor.b) col.b = u_bgColor.b;
-        }
+        // Stochastic sub-LSB dither: allows decay rates smaller than the buffer quantum
+        // to decay smoothly over time without truncation or stalling
+        float dither = (hash12(gl_FragCoord.xy + vec2(u_time * 13.17, u_time * 29.53)) - 0.5) * (1.0 / 2048.0);
+        col += dither;
+
+        // Ensure we don't overshoot the background
+        if (diff.r > 0.0 && col.r < u_bgColor.r) col.r = u_bgColor.r;
+        if (diff.r < 0.0 && col.r > u_bgColor.r) col.r = u_bgColor.r;
+        if (diff.g > 0.0 && col.g < u_bgColor.g) col.g = u_bgColor.g;
+        if (diff.g < 0.0 && col.g > u_bgColor.g) col.g = u_bgColor.g;
+        if (diff.b > 0.0 && col.b < u_bgColor.b) col.b = u_bgColor.b;
+        if (diff.b < 0.0 && col.b > u_bgColor.b) col.b = u_bgColor.b;
 
         fragColor = vec4(col, 1.0);
       }
@@ -704,9 +710,17 @@ class GPUParticlesMode {
     const clearG = bgRgb[1] / 255;
     const clearB = bgRgb[2] / 255;
 
+    // Use 16-bit half-float textures (RGBA16F) for sub-LSB precision motion trails
+    let internalFormat = gl.RGBA16F;
+    let formatType = gl.HALF_FLOAT;
+    if (!gl.getExtension('EXT_color_buffer_float')) {
+      internalFormat = gl.RGBA8;
+      formatType = gl.UNSIGNED_BYTE;
+    }
+
     for (let i = 0; i < 2; i++) {
       gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[i]);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, gl.RGBA, formatType, null);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -714,6 +728,13 @@ class GPUParticlesMode {
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.trailFbos[i]);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.trailTextures[i], 0);
+
+      // Verify framebuffer completeness, fallback to RGBA8 if hardware driver rejects RGBA16F
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+        internalFormat = gl.RGBA8;
+        formatType = gl.UNSIGNED_BYTE;
+        gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, gl.RGBA, formatType, null);
+      }
 
       gl.clearColor(clearR, clearG, clearB, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -841,6 +862,7 @@ class GPUParticlesMode {
     gl.uniform3f(gl.getUniformLocation(this.decayProgram, 'u_bgColor'),
       bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255);
     gl.uniform1f(gl.getUniformLocation(this.decayProgram, 'u_fadeRate'), p.fadeRate);
+    gl.uniform1f(gl.getUniformLocation(this.decayProgram, 'u_time'), this.app.time || 0);
 
     gl.bindVertexArray(this.simQuadVao);
     gl.drawArrays(gl.TRIANGLES, 0, 6);

@@ -222,9 +222,9 @@ class FlowFieldMode {
       this.life[i]++;
       this.colorT[i] = (this.colorT[i] + p.colorCycleSpeed * 0.002) % 1.0;
 
-      // Respawn or retire when dead or out of canvas bounds
+      // Respawn or retire when out of canvas bounds
       const isOutOfBounds = (this.x[i] < -20 || this.x[i] > w + 20 || this.y[i] < -20 || this.y[i] > h + 20);
-      const isDead = (p.fadeRate <= 0.000005) ? isOutOfBounds : (this.life[i] >= this.maxLife[i] || isOutOfBounds);
+      const isDead = isOutOfBounds;
 
       if (isDead) {
         if (p.spawnEnabled !== false) {
@@ -261,15 +261,14 @@ class FlowFieldMode {
       if (this.x[i] < -100 || this.prevX[i] < -100) continue;
 
       let alpha = 1.0;
-      if (p.fadeRate > 0.000005) {
-        const lifeRatio = this.life[i] / this.maxLife[i];
-        alpha = Math.sin(lifeRatio * Math.PI);
-        if (alpha <= 0.01) continue;
+      if (p.taperWidth) {
+        const edgeDist = Math.min(this.x[i], w - this.x[i], this.y[i], h - this.y[i]);
+        alpha = Math.min(1.0, Math.max(0.0, (edgeDist + 20) / 20));
       }
 
       const speedVal = Math.hypot(this.vx[i], this.vy[i]);
       let width = this.strokeW[i];
-      if (p.taperWidth && p.fadeRate > 0.000005) {
+      if (p.taperWidth) {
         width *= (0.3 + 0.7 * alpha) * (0.8 + Math.min(speedVal, 4.0) * 0.3);
       }
 
