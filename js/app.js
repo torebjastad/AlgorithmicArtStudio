@@ -121,24 +121,48 @@ class AlgorithmicArtStudio {
       this.mouse.y = y;
     };
 
+    const brushCursor = document.getElementById('mouse-brush-cursor');
+    const updateBrushCursor = () => {
+      if (!brushCursor) return;
+      const mode = this.currentMode;
+      const isPointerMode = mode?.params?.spawnMode === 'pointer';
+      if (isPointerMode && this.mouse.isHovering) {
+        const diam = mode.params.mouseSpawnDiameter || 80;
+        brushCursor.style.display = 'block';
+        brushCursor.style.left = `${this.mouse.x}px`;
+        brushCursor.style.top = `${this.mouse.y}px`;
+        brushCursor.style.width = `${diam}px`;
+        brushCursor.style.height = `${diam}px`;
+        brushCursor.style.borderColor = this.mouse.isDown ? 'rgba(0, 255, 180, 0.9)' : 'rgba(0, 240, 255, 0.75)';
+        brushCursor.style.boxShadow = this.mouse.isDown ? '0 0 16px rgba(0, 255, 180, 0.5)' : '0 0 10px rgba(0, 240, 255, 0.25)';
+      } else {
+        brushCursor.style.display = 'none';
+      }
+    };
+    this.updateBrushCursor = updateBrushCursor;
+
     window.addEventListener('mousemove', (e) => {
       updatePointer(e.clientX, e.clientY);
       this.mouse.isHovering = true;
+      updateBrushCursor();
     });
 
     window.addEventListener('mousedown', (e) => {
       if (e.target.closest('#hud') || e.target.closest('.modal')) return;
       this.mouse.isDown = true;
       updatePointer(e.clientX, e.clientY);
+      updateBrushCursor();
     });
 
     window.addEventListener('mouseup', () => {
       this.mouse.isDown = false;
+      updateBrushCursor();
     });
 
     window.addEventListener('mouseleave', () => {
       this.mouse.isHovering = false;
       this.mouse.isDown = false;
+      updateBrushCursor();
     });
 
     // Touch events
@@ -146,18 +170,23 @@ class AlgorithmicArtStudio {
       if (e.touches.length > 0) {
         if (e.touches[0].target.closest('#hud') || e.touches[0].target.closest('.modal')) return;
         this.mouse.isDown = true;
+        this.mouse.isHovering = true;
         updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+        updateBrushCursor();
       }
     }, { passive: false });
 
     window.addEventListener('touchmove', (e) => {
       if (e.touches.length > 0) {
         updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+        updateBrushCursor();
       }
     }, { passive: true });
 
     window.addEventListener('touchend', () => {
       this.mouse.isDown = false;
+      this.mouse.isHovering = false;
+      updateBrushCursor();
     });
   }
 

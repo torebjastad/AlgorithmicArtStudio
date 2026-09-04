@@ -249,7 +249,24 @@
               <option value="random" selected>Full Canvas (Random Everywhere)</option>
               <option value="edges">Canvas Edges / Perimeter Only</option>
               <option value="center">Center Core / Radial Burst</option>
+              <option value="pointer">🎨 Mouse Pointer Brush (Click & Drag to Paint)</option>
             </select>
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow,gpu_particles" data-show-for-spawn-mode="pointer" style="display: none;">
+            <div class="label-row">
+              <label for="slider-mouse-spawn-diameter">Mouse Brush Diameter</label>
+              <span class="val-badge" data-badge="mouseSpawnDiameter">80 px</span>
+            </div>
+            <input type="range" id="slider-mouse-spawn-diameter" data-param="mouseSpawnDiameter" min="10" max="400" step="5" value="80">
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow,gpu_particles" data-show-for-spawn-mode="pointer" style="display: none;">
+            <div class="label-row">
+              <label for="slider-mouse-spawn-rate">Mouse Spawn Emission Rate</label>
+              <span class="val-badge" data-badge="mouseSpawnRate">200 / frame</span>
+            </div>
+            <input type="range" id="slider-mouse-spawn-rate" data-param="mouseSpawnRate" min="10" max="2000" step="10" value="200">
           </div>
 
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
@@ -574,6 +591,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Interactive Mouse Brush Indicator for Painting Mode -->
+  <div id="mouse-brush-cursor" style="position: fixed; pointer-events: none; border: 1.5px dashed rgba(0, 240, 255, 0.75); border-radius: 50%; transform: translate(-50%, -50%); display: none; z-index: 9999; box-shadow: 0 0 12px rgba(0, 240, 255, 0.3); transition: width 0.05s ease, height 0.05s ease, border-color 0.15s ease;"></div>
 
   <!-- Scripts -->
   <script src="js/noise/perlin.js"></script>

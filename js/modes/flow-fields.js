@@ -27,7 +27,9 @@ class FlowFieldMode {
       blendMode: 'lighter',
       jitter: 0.05,
       colorCycleSpeed: 0.2,
-      spawnMode: 'random',   // 'random', 'edges', 'center'
+      spawnMode: 'random',   // 'random', 'edges', 'center', 'pointer'
+      mouseSpawnDiameter: 80,
+      mouseSpawnRate: 30,
       spawnEnabled: true,    // Whether new particles spawn or current ones propagate
       mouseForce: 'none',    // 'none', 'attract', 'repel', 'swirl'
       mouseRadius: 180,
@@ -55,7 +57,13 @@ class FlowFieldMode {
   }
 
   resetParticle(i, w, h) {
-    if (this.params.spawnMode === 'edges') {
+    if (this.params.spawnMode === 'pointer') {
+      const mouse = this.app.mouse;
+      const angle = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random()) * ((this.params.mouseSpawnDiameter || 80) * 0.5);
+      this.x[i] = mouse.x + Math.cos(angle) * r;
+      this.y[i] = mouse.y + Math.sin(angle) * r;
+    } else if (this.params.spawnMode === 'edges') {
       const margin = 2.5;
       const totalW = w + 2 * margin;
       const totalH = h + 2 * margin;
@@ -91,12 +99,26 @@ class FlowFieldMode {
     const w = this.app.width || window.innerWidth;
     const h = this.app.height || window.innerHeight;
     const count = this.params.particleCount;
+    const isPointerMode = (this.params.spawnMode === 'pointer');
     const isEdgeOrCenter = (this.params.spawnMode === 'edges' || this.params.spawnMode === 'center');
     const speedScale = Math.max(1.0, 1.6 / Math.max(0.01, this.params.particleSpeed));
     const spawnSpan = 400 * speedScale;
 
     for (let i = 0; i < count; i++) {
-      if (isEdgeOrCenter) {
+      if (isPointerMode) {
+        this.x[i] = -9999;
+        this.y[i] = -9999;
+        this.prevX[i] = -9999;
+        this.prevY[i] = -9999;
+        this.vx[i] = 0;
+        this.vy[i] = 0;
+        this.maxLife[i] = (180 + Math.random() * 360) * speedScale;
+        this.life[i] = 99999;
+        this.colorT[i] = Math.random();
+        this.strokeW[i] = (this.params.particleShape === 'round_varied')
+          ? (0.5 + Math.random() * this.params.strokeWidth)
+          : this.params.strokeWidth;
+      } else if (isEdgeOrCenter) {
         this.x[i] = -9999;
         this.y[i] = -9999;
         this.prevX[i] = -9999;
@@ -132,6 +154,8 @@ class FlowFieldMode {
     const jitter = p.jitter;
     const mouseRadiusSq = p.mouseRadius * p.mouseRadius;
 
+    let toSpawn = (p.spawnMode === 'pointer' && mouse.isDown && mouse.isHovering) ? (p.mouseSpawnRate || 30) : 0;
+
     for (let i = 0; i < count; i++) {
       // Stratified pre-spawn delay queue for steady continuous edge/center inflow
       if (this.life[i] < 0) {
@@ -144,8 +168,16 @@ class FlowFieldMode {
         continue;
       }
 
-      // If retired off-screen while spawning is stopped
+      // If retired off-screen while spawning is stopped or in pointer mode
       if (this.x[i] < -100) {
+        if (p.spawnMode === 'pointer') {
+          if (toSpawn > 0) {
+            this.resetParticle(i, w, h);
+            toSpawn--;
+          }
+          continue;
+        }
+
         if (p.spawnEnabled !== false) {
           // Stagger resumption smoothly
           const speedScale = Math.max(1.0, 1.6 / Math.max(0.01, p.particleSpeed));
@@ -227,7 +259,13 @@ class FlowFieldMode {
       const isDead = (p.fadeRate <= 0.00001) ? isOutOfBounds : (this.life[i] >= this.maxLife[i] || isOutOfBounds);
 
       if (isDead) {
-        if (p.spawnEnabled !== false) {
+        if (p.spawnMode === 'pointer') {
+          this.x[i] = -9999;
+          this.y[i] = -9999;
+          this.prevX[i] = -9999;
+          this.prevY[i] = -9999;
+          this.life[i] = 99999;
+        } else if (p.spawnEnabled !== false) {
           this.resetParticle(i, w, h);
         } else {
           this.x[i] = -9999;

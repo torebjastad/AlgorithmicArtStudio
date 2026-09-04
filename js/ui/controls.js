@@ -302,6 +302,8 @@ class ControlsManager {
       if (val < 0.1) return val.toFixed(3);
       return val.toFixed(2);
     }
+    if (paramKey === 'mouseSpawnDiameter') return `${Math.round(val)} px`;
+    if (paramKey === 'mouseSpawnRate') return `${Math.round(val)} / frame`;
     if (val >= 100 && Math.abs(val - Math.round(val)) < 0.001) return Math.round(val).toLocaleString();
     if (val < 0.001) return val.toFixed(4);
     if (val < 0.01) return val.toFixed(4);
@@ -339,6 +341,13 @@ class ControlsManager {
         document.querySelectorAll(`[data-badge="${paramKey}"]`).forEach(b => {
           b.textContent = this.formatBadge(val, paramKey);
         });
+
+        if (paramKey === 'spawnMode') {
+          this.syncSpawnModeControls(val);
+        }
+        if (paramKey === 'spawnMode' || paramKey === 'mouseSpawnDiameter') {
+          this.app.updateBrushCursor?.();
+        }
 
         if ((paramKey === 'particleCount' || paramKey === 'spawnMode') && typeof mode.resetAllParticles === 'function') {
           mode.resetAllParticles();
@@ -434,6 +443,16 @@ class ControlsManager {
     if (mode.params && mode.params.spawnEnabled !== undefined) {
       this.updateSpawnUI(mode.params.spawnEnabled !== false);
     }
+
+    // Sync Spawn Mode conditional controls
+    this.syncSpawnModeControls(mode.params?.spawnMode || 'random');
+  }
+
+  syncSpawnModeControls(spawnMode) {
+    document.querySelectorAll('[data-show-for-spawn-mode]').forEach(el => {
+      const allowed = el.dataset.showForSpawnMode.split(',').map(m => m.trim());
+      el.style.display = allowed.includes(spawnMode) ? 'block' : 'none';
+    });
   }
 
   randomizeParameters() {
