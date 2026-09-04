@@ -225,7 +225,7 @@ class GPUParticlesMode {
             pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
             oldPos = pos;
             age = 0.0;
-            maxLife = (180.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
+            maxLife = 15000.0;
             seed += vec2(0.137, 0.291);
           } else {
             outPosLife = vec4(-9999.0, -9999.0, 99999.0, maxLife);
@@ -235,9 +235,9 @@ class GPUParticlesMode {
         }
 
         bool isOutOfBounds = (pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0);
-        // At fadeRate == 0 (Never Decay), particles propagate all the way until they exit the canvas bounds,
-        // so trails never stop abruptly in the middle of the screen!
-        bool isDead = (u_fadeRate <= 0.00001) ? isOutOfBounds : (age >= maxLife || isOutOfBounds);
+        // Particles persist continuously until they exit the canvas bounds
+        // (with a generous 15,000-frame failsafe to recycle any caught in static vortex singularities)
+        bool isDead = (age >= 15000.0 || isOutOfBounds);
 
         if (isDead) {
           if (u_spawnEnabled == 1) {
@@ -246,8 +246,7 @@ class GPUParticlesMode {
             pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
             oldPos = pos; // Avoid connecting streak across screen on respawn
             age = 0.0;
-            // Scale lifetime with speed so particles have time to traverse the entire field
-            maxLife = (180.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
+            maxLife = 15000.0;
             seed += vec2(0.137, 0.291);
           } else {
             // Spawning Stopped Mode: Do not spawn a new particle; retire off-screen
@@ -572,7 +571,7 @@ class GPUParticlesMode {
 
     for (let i = 0; i < totalParticles; i++) {
       let rx, ry, age;
-      const maxLife = (180 + Math.random() * 360) * speedScale;
+      const maxLife = 15000.0;
 
       if (isEdgeOrCenter) {
         // Stratified startup delay: place off-screen with negative age so particles trickle in steadily
@@ -584,7 +583,7 @@ class GPUParticlesMode {
         // Full Canvas mode: immediately scatter across screen
         rx = Math.random() * w;
         ry = Math.random() * h;
-        age = Math.random() * maxLife;
+        age = Math.random() * 500.0;
       }
 
       posLifeData[i * 4] = rx;
