@@ -486,7 +486,7 @@ class GPUParticlesMode {
     gl.attachShader(this.renderProgram, renderFs);
     gl.linkProgram(this.renderProgram);
 
-    // 4. Background Trail Decay Pass (Quantization Floor-Buster)
+    // 4. Background Trail Decay Pass (High-Precision Float Decay)
     const decayFsSource = `#version 300 es
       precision highp float;
       in vec2 v_uv;
@@ -498,26 +498,18 @@ class GPUParticlesMode {
 
       void main() {
         vec3 prev = texture(u_trailTex, v_uv).rgb;
-        if (u_fadeRate <= 0.00001) {
+        if (u_fadeRate <= 0.000005) {
           fragColor = vec4(prev, 1.0);
           return;
         }
 
-        vec3 diff = prev - u_bgColor;
+        // True exponential decay in high-precision float
         vec3 col = mix(prev, u_bgColor, u_fadeRate);
 
-        // Floor-buster: snap to background when within ~4 LSBs, and guarantee minimum step
-        float maxDiff = max(abs(diff.r), max(abs(diff.g), abs(diff.b)));
-        if (maxDiff < 0.016) {
+        // Snap completely to background once difference is sub-perceptual (< 0.002 ~ 0.5/255)
+        float maxDiff = max(abs(col.r - u_bgColor.r), max(abs(col.g - u_bgColor.g), abs(col.b - u_bgColor.b)));
+        if (maxDiff < 0.002) {
           col = u_bgColor;
-        } else {
-          col -= sign(diff) * (1.5 / 255.0);
-          if (diff.r > 0.0 && col.r < u_bgColor.r) col.r = u_bgColor.r;
-          if (diff.r < 0.0 && col.r > u_bgColor.r) col.r = u_bgColor.r;
-          if (diff.g > 0.0 && col.g < u_bgColor.g) col.g = u_bgColor.g;
-          if (diff.g < 0.0 && col.g > u_bgColor.g) col.g = u_bgColor.g;
-          if (diff.b > 0.0 && col.b < u_bgColor.b) col.b = u_bgColor.b;
-          if (diff.b < 0.0 && col.b > u_bgColor.b) col.b = u_bgColor.b;
         }
 
         fragColor = vec4(col, 1.0);
@@ -704,9 +696,14 @@ class GPUParticlesMode {
     const clearG = bgRgb[1] / 255;
     const clearB = bgRgb[2] / 255;
 
+    // Use RGBA16F for true sub-8-bit floating-point decay persistence across thousands of frames
+    const hasFloatFBO = !!gl.getExtension('EXT_color_buffer_float');
+    const internalFormat = hasFloatFBO ? gl.RGBA16F : gl.RGBA8;
+    const formatType = hasFloatFBO ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
+
     for (let i = 0; i < 2; i++) {
       gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[i]);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, gl.RGBA, formatType, null);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
