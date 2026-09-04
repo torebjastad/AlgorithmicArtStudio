@@ -37,9 +37,6 @@ class GPUParticlesMode {
     this.texSize = 1024;
     this.readIdx = 0;
     this.writeIdx = 1;
-    this.screenTex = null;
-    this.screenTexW = 0;
-    this.screenTexH = 0;
     this.initialized = false;
 
     this.initGL();
@@ -469,11 +466,8 @@ class GPUParticlesMode {
 
         if (mask <= 0.002) discard;
 
-        float totalAlpha = v_alpha * mask * u_glowAlpha;
-        if (totalAlpha <= 0.008) discard;
-
         vec3 col = cosinePalette(v_colorT);
-        fragColor = vec4(col, totalAlpha);
+        fragColor = vec4(col, v_alpha * mask * u_glowAlpha);
       }
     `;
 
@@ -484,36 +478,13 @@ class GPUParticlesMode {
     gl.attachShader(this.renderProgram, renderFs);
     gl.linkProgram(this.renderProgram);
 
-    // 4. Background Fade Quad Shader (Motion Trails with Quantization Floor Elimination)
+    // 4. Background Fade Quad Shader (Motion Trails)
     const fadeFsSource = `#version 300 es
       precision highp float;
-      in vec2 v_uv;
       out vec4 fragColor;
-
-      uniform sampler2D u_screenTex;
-      uniform vec3 u_bgColor;
-      uniform float u_fadeRate;
-
+      uniform vec4 u_fadeColor;
       void main() {
-        vec3 src = texture(u_screenTex, v_uv).rgb;
-        vec3 diff = src - u_bgColor;
-
-        // Exponential decay towards target background
-        vec3 col = mix(src, u_bgColor, u_fadeRate);
-
-        // Quantization floor elimination:
-        // In 8-bit framebuffers, (C - C_bg) * fadeRate < 0.5 causes rounding to stall,
-        // leaving permanent faint ghost trails. We actively eliminate this floor:
-        float maxDiff = max(abs(diff.r), max(abs(diff.g), abs(diff.b)));
-        if (maxDiff < 0.02) {
-          // Snap directly to background when within ~5/255 intensity
-          col = u_bgColor;
-        } else {
-          // Guarantee at least 1.2 LSB steps per frame towards background
-          col -= sign(diff) * (1.2 / 255.0);
-        }
-
-        fragColor = vec4(col, 1.0);
+        fragColor = u_fadeColor;
       }
     `;
     const fadeFs = this.app.webgl.compileShader(fadeFsSource, gl.FRAGMENT_SHADER);
@@ -762,34 +733,14 @@ class GPUParticlesMode {
       // 0.00 Mode: Never Decay (infinite trail persistence)
       // Skip the fade quad completely so trails accumulate permanently!
     } else {
-      // Ensure screen copy texture is allocated and matches canvas dimensions
-      if (!this.screenTex || this.screenTexW !== w || this.screenTexH !== h) {
-        if (!this.screenTex) this.screenTex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.screenTex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        this.screenTexW = w;
-        this.screenTexH = h;
-      }
+      // Smooth fading motion blur quad
+      gl.enable(gl.BLEND);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-      // Copy current frame canvas content to texture in VRAM
-      gl.bindTexture(gl.TEXTURE_2D, this.screenTex);
-      gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
-
-      // Render decay pass with active floor elimination (overwriting canvas cleanly without blend stall)
-      gl.disable(gl.BLEND);
       gl.useProgram(this.fadeProgram);
-
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, this.screenTex);
-      gl.uniform1i(gl.getUniformLocation(this.fadeProgram, 'u_screenTex'), 0);
-
-      gl.uniform3f(gl.getUniformLocation(this.fadeProgram, 'u_bgColor'),
-        bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255);
-      gl.uniform1f(gl.getUniformLocation(this.fadeProgram, 'u_fadeRate'), p.fadeRate);
+      gl.uniform4f(gl.getUniformLocation(this.fadeProgram, 'u_fadeColor'),
+        bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, p.fadeRate);
 
       gl.bindVertexArray(this.simQuadVao);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
