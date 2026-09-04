@@ -531,7 +531,7 @@ class ControlsManager {
 
     // 9. Trail Taper Style (GPU mode)
     if (p.taperMode !== undefined) {
-      const tapers = ['intensity', 'both', 'width', 'none'];
+      const tapers = ['none', 'none', 'both', 'width'];
       p.taperMode = tapers[Math.floor(Math.random() * tapers.length)];
     }
     if (p.streakLength !== undefined) {

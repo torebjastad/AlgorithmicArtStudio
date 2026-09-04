@@ -25,7 +25,7 @@ class GPUParticlesMode {
       blendMode: 'lighter',  // 'lighter', 'source-over', 'screen', 'lighten', 'overlay', 'multiply', 'difference'
       fadeRate: 0.23,        // Motion blur decay rate
       glowAlpha: 0.85,
-      taperMode: 'intensity', // 'both', 'intensity', 'width', 'none'
+      taperMode: 'none',      // 'none', 'both', 'width', 'intensity'
       spawnMode: 'random',   // 'random', 'edges', 'center'
       spawnEnabled: true,    // Whether new particles spawn or current ones propagate
       enableMouse: false,
@@ -356,8 +356,8 @@ class GPUParticlesMode {
 
         float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
 
-        // Start at 100% full intensity from frame 0 at the canvas edge and decay smoothly to 0.0 at the end
-        float lifeCurve = smoothstep(1.0, 0.45, lifeRatio);
+        // Keep 100% full brilliance throughout flight; if taper is enabled, taper only in the final 8% of life
+        float lifeCurve = smoothstep(1.0, 0.92, lifeRatio);
 
         float alphaMultiplier = 1.0;
         float widthMultiplier = 1.0;
@@ -368,19 +368,19 @@ class GPUParticlesMode {
           widthMultiplier = 1.0;
         } else {
           if (u_taperMode == 0) {
-            // Both: Intensity Fade + Width Needle Taper
+            // Both: Intensity Fade + Width Needle Taper (feathered needle tip at end of life)
             alphaMultiplier = lifeCurve;
-            widthMultiplier = mix(0.30, 1.0, lifeCurve);
+            widthMultiplier = mix(0.10, 1.0, lifeCurve);
           } else if (u_taperMode == 1) {
             // Intensity Fade Only (Constant Stroke Width)
             alphaMultiplier = lifeCurve;
             widthMultiplier = 1.0;
           } else if (u_taperMode == 2) {
-            // Width Fade Only (Full Opacity, Solid Needle to Point)
+            // Width Fade Only (Full Opacity, Solid Razor Needle)
             alphaMultiplier = 1.0;
             widthMultiplier = mix(0.0, 1.0, lifeCurve);
           } else {
-            // None: Uniform Constant Ribbon
+            // None: Uniform Constant Ribbon (Crisp & Continuous)
             alphaMultiplier = 1.0;
             widthMultiplier = 1.0;
           }
@@ -465,9 +465,11 @@ class GPUParticlesMode {
         }
 
         if (mask <= 0.002) discard;
+        float totalAlpha = v_alpha * mask * u_glowAlpha;
+        if (totalAlpha <= 0.02) discard;
 
         vec3 col = cosinePalette(v_colorT);
-        fragColor = vec4(col, v_alpha * mask * u_glowAlpha);
+        fragColor = vec4(col, totalAlpha);
       }
     `;
 
@@ -725,15 +727,11 @@ class GPUParticlesMode {
 
     const bgRgb = palette.hexToRGB(palette.customBg);
 
-    if (p.fadeRate >= 0.35) {
-      // Instant clear at high fade rate
-      gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-    } else if (p.fadeRate <= 0.00001) {
+    if (p.fadeRate <= 0.00001) {
       // 0.00 Mode: Never Decay (infinite trail persistence)
       // Skip the fade quad completely so trails accumulate permanently!
     } else {
-      // Smooth fading motion blur quad
+      // Smooth fading motion blur quad across entire range
       gl.enable(gl.BLEND);
       gl.blendEquation(gl.FUNC_ADD);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
