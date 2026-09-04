@@ -298,6 +298,7 @@ class GPUParticlesMode {
 
       uniform vec2 u_resolution;
       uniform float u_strokeWidth;
+      uniform float u_streakLength;
       uniform int u_taperMode; // 0: both, 1: intensity only, 2: width only, 3: none / uniform
       uniform float u_fadeRate;
 
@@ -350,8 +351,16 @@ class GPUParticlesMode {
           }
         }
 
-        float halfWidth = max(0.4, u_strokeWidth * 0.5) * widthMultiplier;
-        vec2 basePos = mix(prevPos, pos, a_quadPos.x);
+        // Per-particle organic size variation (matching CPU mode: 0.5 + Math.random() * strokeWidth)
+        float sizeHash = fract(sin(dot(prevSeed.zw, vec2(12.9898, 78.233))) * 43758.5453);
+        float sizeVar = mix(0.4, 1.25, sizeHash);
+
+        float halfWidth = max(0.35, u_strokeWidth * 0.5 * sizeVar) * widthMultiplier;
+
+        // Tail position with streak length support
+        float sLen = max(0.5, u_streakLength);
+        vec2 tailPos = pos - dir * sLen;
+        vec2 basePos = mix(tailPos, pos, a_quadPos.x);
         vec2 screenPos = basePos + norm * (a_quadPos.y * halfWidth);
 
         vec2 clipSpace = (screenPos / u_resolution) * 2.0 - 1.0;
@@ -382,9 +391,9 @@ class GPUParticlesMode {
       }
 
       void main() {
-        // Analytic sub-pixel Gaussian edge anti-aliasing
+        // Analytic edge anti-aliasing with solid luminous core
         float edgeDist = abs(v_side);
-        float edgeAntialias = exp(-edgeDist * edgeDist * 2.5);
+        float edgeAntialias = smoothstep(1.0, 0.65, edgeDist);
 
         vec3 col = cosinePalette(v_colorT);
         fragColor = vec4(col, v_alpha * edgeAntialias * u_glowAlpha);
@@ -686,7 +695,8 @@ class GPUParticlesMode {
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_velSeedTex'), 1);
 
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
-    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_strokeWidth'), p.strokeWidth * (this.app.webgl.dpr || 1));
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_strokeWidth'), p.strokeWidth);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_streakLength'), p.streakLength || 1.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), p.glowAlpha);
 
     const taperModeMap = { both: 0, intensity: 1, width: 2, none: 3 };

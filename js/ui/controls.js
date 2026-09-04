@@ -330,9 +330,17 @@ class ControlsManager {
         const val = this.valueFromInput(input);
         mode.params[paramKey] = val;
 
-        if (badge) {
-          badge.textContent = this.formatBadge(val, paramKey);
-        }
+        // Keep all other inputs with this paramKey in sync
+        document.querySelectorAll(`[data-param="${paramKey}"]`).forEach(other => {
+          if (other !== input) {
+            this.inputFromValue(other, val);
+          }
+        });
+
+        // Keep all badges with this paramKey in sync
+        document.querySelectorAll(`[data-badge="${paramKey}"]`).forEach(b => {
+          b.textContent = this.formatBadge(val, paramKey);
+        });
 
         if ((paramKey === 'particleCount' || paramKey === 'spawnMode') && typeof mode.resetAllParticles === 'function') {
           mode.resetAllParticles();
@@ -457,11 +465,9 @@ class ControlsManager {
         const val = mode.params[paramKey];
         this.inputFromValue(input, val);
 
-        const badge = input.closest('.control-group')?.querySelector('.val-badge') ||
-                      document.querySelector(`[data-badge="${paramKey}"]`);
-        if (badge) {
+        document.querySelectorAll(`[data-badge="${paramKey}"]`).forEach(badge => {
           badge.textContent = this.formatBadge(val, paramKey);
-        }
+        });
       }
     });
 
