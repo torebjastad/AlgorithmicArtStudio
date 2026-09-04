@@ -193,11 +193,38 @@ class GPUParticlesMode {
         float maxLife = posLife.w;
         vec2 seed = prevSeed.zw;
 
-        // If particle was already retired off-screen and spawning is stopped, stay retired
-        if (u_spawnEnabled == 0 && (pos.x < -100.0 || pos.y < -100.0)) {
-          outPosLife = vec4(-9999.0, -9999.0, 99999.0, maxLife);
+        // Pre-spawn delay queue for steady continuous edge/center inflow from the very first frame
+        if (age < 0.0) {
+          outPosLife = vec4(-9999.0, -9999.0, age, maxLife);
           outPrevSeed = vec4(-9999.0, -9999.0, seed);
           return;
+        }
+
+        // Particle is off-screen (waking up from pre-spawn queue, or retired while spawning was stopped)
+        if (pos.x < -100.0 || pos.y < -100.0) {
+          if (u_spawnEnabled == 1) {
+            // If waking up from the initial stratified delay queue (age < 90000.0), wake up immediately.
+            // If resuming after being retired with P (age >= 90000.0), stagger resumption smoothly.
+            if (age >= 90000.0) {
+              float wakeChance = 1.0 / (400.0 * max(1.0, 1.6 / max(0.01, u_particleSpeed)));
+              if (hash12(seed + vec2(u_time * 0.1, 7.19)) > wakeChance) {
+                outPosLife = vec4(-9999.0, -9999.0, age, maxLife);
+                outPrevSeed = vec4(-9999.0, -9999.0, seed);
+                return;
+              }
+            }
+
+            vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
+            pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
+            oldPos = pos;
+            age = 0.0;
+            maxLife = (180.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
+            seed += vec2(0.137, 0.291);
+          } else {
+            outPosLife = vec4(-9999.0, -9999.0, 99999.0, maxLife);
+            outPrevSeed = vec4(-9999.0, -9999.0, seed);
+            return;
+          }
         }
 
         bool isOutOfBounds = (pos.x < -40.0 || pos.x > u_resolution.x + 40.0 || pos.y < -40.0 || pos.y > u_resolution.y + 40.0);
@@ -493,29 +520,27 @@ class GPUParticlesMode {
     const posLifeData = new Float32Array(totalParticles * 4);
     const prevSeedData = new Float32Array(totalParticles * 4);
 
+    const activeCount = Math.max(1, Math.min(Math.round(this.params.particleCount), totalParticles));
+    const speedScale = Math.max(1.0, 1.6 / Math.max(0.01, this.params.particleSpeed));
+    const isEdgeOrCenter = (this.params.spawnMode === 'edges' || this.params.spawnMode === 'center');
+    const spawnSpan = 450 * speedScale;
+
     for (let i = 0; i < totalParticles; i++) {
-      let rx, ry;
-      if (this.params.spawnMode === 'edges') {
-        const margin = 2.5;
-        const totalW = w + 2 * margin;
-        const totalH = h + 2 * margin;
-        const perimeter = 2 * (totalW + totalH);
-        const d = Math.random() * perimeter;
-        if (d < totalW) { rx = -margin + d; ry = -margin; }
-        else if (d < totalW + totalH) { rx = w + margin; ry = -margin + (d - totalW); }
-        else if (d < 2 * totalW + totalH) { rx = w + margin - (d - (totalW + totalH)); ry = h + margin; }
-        else { rx = -margin; ry = h + margin - (d - (2 * totalW + totalH)); }
-      } else if (this.params.spawnMode === 'center') {
-        rx = w * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
-        ry = h * 0.5 + (Math.random() - 0.5) * Math.min(w, h) * 0.18;
+      let rx, ry, age;
+      const maxLife = (180 + Math.random() * 360) * speedScale;
+
+      if (isEdgeOrCenter) {
+        // Stratified startup delay: place off-screen with negative age so particles trickle in steadily
+        rx = -9999.0;
+        ry = -9999.0;
+        const delay = (i < activeCount) ? (i / activeCount) * spawnSpan : (spawnSpan + 100);
+        age = -delay;
       } else {
+        // Full Canvas mode: immediately scatter across screen
         rx = Math.random() * w;
         ry = Math.random() * h;
+        age = Math.random() * maxLife;
       }
-
-      const speedScale = Math.max(1.0, 1.6 / Math.max(0.01, this.params.particleSpeed));
-      const maxLife = (180 + Math.random() * 360) * speedScale;
-      const age = Math.random() * maxLife;
 
       posLifeData[i * 4] = rx;
       posLifeData[i * 4 + 1] = ry;
