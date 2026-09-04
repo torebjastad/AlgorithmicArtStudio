@@ -487,11 +487,9 @@ class GPUParticlesMode {
       uniform float u_fadeRate;
       uniform float u_time;
 
-      // Fast high-precision hash for sub-LSB stochastic dithering
-      float hash12(vec2 p) {
-        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-        p3 += dot(p3, p3.yzx + 33.33);
-        return fract((p3.xx + p3.yz) * p3.zy).x;
+      // Interleaved gradient noise: fast, high-quality, strictly type-safe
+      float ign(vec2 p) {
+        return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
       }
 
       void main() {
@@ -502,29 +500,54 @@ class GPUParticlesMode {
         }
 
         vec3 diff = prev - u_bgColor;
-        float maxDiff = max(abs(diff.r), max(abs(diff.g), abs(diff.b)));
+        vec3 absDiff = abs(diff);
+        float maxDiff = max(absDiff.r, max(absDiff.g, absDiff.b));
 
-        // Snap cleanly to background when difference is completely imperceptible
-        if (maxDiff < 0.001) {
+        // When difference is less than 1.5 LSBs (~1.5 / 255.0), snap cleanly to background
+        // so no faint ghost trails ever linger
+        if (maxDiff < 0.006) {
           fragColor = vec4(u_bgColor, 1.0);
           return;
         }
 
-        // Exponential decay towards background
-        vec3 col = mix(prev, u_bgColor, u_fadeRate);
+        // Target decay per frame
+        vec3 stepDecay = absDiff * u_fadeRate;
 
-        // Stochastic sub-LSB dither: allows decay rates smaller than the buffer quantum
-        // to decay smoothly over time without truncation or stalling
-        float dither = (hash12(gl_FragCoord.xy + vec2(u_time * 13.17, u_time * 29.53)) - 0.5) * (1.0 / 2048.0);
-        col += dither;
+        // In 8-bit buffers, stepDecay < 1/255 normally rounds to zero (stalling decay).
+        // Stochastic dither: if the fractional step is smaller than 1/255,
+        // it has a proportional probability of stepping by 1/255.
+        vec2 noiseCoord = gl_FragCoord.xy + vec2(fract(u_time * 7.13) * 100.0, fract(u_time * 11.37) * 100.0);
+        float noise = ign(noiseCoord);
+        
+        vec3 col = prev;
+        float oneBit = 1.0 / 255.0;
 
-        // Ensure we don't overshoot the background
-        if (diff.r > 0.0 && col.r < u_bgColor.r) col.r = u_bgColor.r;
-        if (diff.r < 0.0 && col.r > u_bgColor.r) col.r = u_bgColor.r;
-        if (diff.g > 0.0 && col.g < u_bgColor.g) col.g = u_bgColor.g;
-        if (diff.g < 0.0 && col.g > u_bgColor.g) col.g = u_bgColor.g;
-        if (diff.b > 0.0 && col.b < u_bgColor.b) col.b = u_bgColor.b;
-        if (diff.b < 0.0 && col.b > u_bgColor.b) col.b = u_bgColor.b;
+        // Channel R
+        if (diff.r > 0.0) {
+          float change = (stepDecay.r >= oneBit) ? stepDecay.r : ((noise < stepDecay.r * 255.0) ? oneBit : 0.0);
+          col.r = max(u_bgColor.r, prev.r - change);
+        } else if (diff.r < 0.0) {
+          float change = (stepDecay.r >= oneBit) ? stepDecay.r : ((noise < stepDecay.r * 255.0) ? oneBit : 0.0);
+          col.r = min(u_bgColor.r, prev.r + change);
+        }
+
+        // Channel G
+        if (diff.g > 0.0) {
+          float change = (stepDecay.g >= oneBit) ? stepDecay.g : ((noise < stepDecay.g * 255.0) ? oneBit : 0.0);
+          col.g = max(u_bgColor.g, prev.g - change);
+        } else if (diff.g < 0.0) {
+          float change = (stepDecay.g >= oneBit) ? stepDecay.g : ((noise < stepDecay.g * 255.0) ? oneBit : 0.0);
+          col.g = min(u_bgColor.g, prev.r + change);
+        }
+
+        // Channel B
+        if (diff.b > 0.0) {
+          float change = (stepDecay.b >= oneBit) ? stepDecay.b : ((noise < stepDecay.b * 255.0) ? oneBit : 0.0);
+          col.b = max(u_bgColor.b, prev.b - change);
+        } else if (diff.b < 0.0) {
+          float change = (stepDecay.b >= oneBit) ? stepDecay.b : ((noise < stepDecay.b * 255.0) ? oneBit : 0.0);
+          col.b = min(u_bgColor.b, prev.r + change);
+        }
 
         fragColor = vec4(col, 1.0);
       }
@@ -710,17 +733,9 @@ class GPUParticlesMode {
     const clearG = bgRgb[1] / 255;
     const clearB = bgRgb[2] / 255;
 
-    // Use 16-bit half-float textures (RGBA16F) for sub-LSB precision motion trails
-    let internalFormat = gl.RGBA16F;
-    let formatType = gl.HALF_FLOAT;
-    if (!gl.getExtension('EXT_color_buffer_float')) {
-      internalFormat = gl.RGBA8;
-      formatType = gl.UNSIGNED_BYTE;
-    }
-
     for (let i = 0; i < 2; i++) {
       gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[i]);
-      gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, gl.RGBA, formatType, null);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -728,13 +743,6 @@ class GPUParticlesMode {
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.trailFbos[i]);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.trailTextures[i], 0);
-
-      // Verify framebuffer completeness, fallback to RGBA8 if hardware driver rejects RGBA16F
-      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-        internalFormat = gl.RGBA8;
-        formatType = gl.UNSIGNED_BYTE;
-        gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, gl.RGBA, formatType, null);
-      }
 
       gl.clearColor(clearR, clearG, clearB, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
