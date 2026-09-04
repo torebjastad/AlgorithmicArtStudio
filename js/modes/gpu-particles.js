@@ -37,6 +37,12 @@ class GPUParticlesMode {
     this.texSize = 1024;
     this.readIdx = 0;
     this.writeIdx = 1;
+    this.trailTextures = null;
+    this.trailFbos = null;
+    this.trailReadIdx = 0;
+    this.trailWriteIdx = 1;
+    this.trailW = 0;
+    this.trailH = 0;
     this.initialized = false;
 
     this.initGL();
@@ -480,20 +486,64 @@ class GPUParticlesMode {
     gl.attachShader(this.renderProgram, renderFs);
     gl.linkProgram(this.renderProgram);
 
-    // 4. Background Fade Quad Shader (Motion Trails)
-    const fadeFsSource = `#version 300 es
+    // 4. Background Trail Decay Pass (Quantization Floor-Buster)
+    const decayFsSource = `#version 300 es
       precision highp float;
+      in vec2 v_uv;
       out vec4 fragColor;
-      uniform vec4 u_fadeColor;
+
+      uniform sampler2D u_trailTex;
+      uniform vec3 u_bgColor;
+      uniform float u_fadeRate;
+
       void main() {
-        fragColor = u_fadeColor;
+        vec3 prev = texture(u_trailTex, v_uv).rgb;
+        if (u_fadeRate <= 0.00001) {
+          fragColor = vec4(prev, 1.0);
+          return;
+        }
+
+        vec3 diff = prev - u_bgColor;
+        vec3 col = mix(prev, u_bgColor, u_fadeRate);
+
+        // Floor-buster: snap to background when within ~4 LSBs, and guarantee minimum step
+        float maxDiff = max(abs(diff.r), max(abs(diff.g), abs(diff.b)));
+        if (maxDiff < 0.016) {
+          col = u_bgColor;
+        } else {
+          col -= sign(diff) * (1.5 / 255.0);
+          if (diff.r > 0.0 && col.r < u_bgColor.r) col.r = u_bgColor.r;
+          if (diff.r < 0.0 && col.r > u_bgColor.r) col.r = u_bgColor.r;
+          if (diff.g > 0.0 && col.g < u_bgColor.g) col.g = u_bgColor.g;
+          if (diff.g < 0.0 && col.g > u_bgColor.g) col.g = u_bgColor.g;
+          if (diff.b > 0.0 && col.b < u_bgColor.b) col.b = u_bgColor.b;
+          if (diff.b < 0.0 && col.b > u_bgColor.b) col.b = u_bgColor.b;
+        }
+
+        fragColor = vec4(col, 1.0);
       }
     `;
-    const fadeFs = this.app.webgl.compileShader(fadeFsSource, gl.FRAGMENT_SHADER);
-    this.fadeProgram = gl.createProgram();
-    gl.attachShader(this.fadeProgram, quadVs);
-    gl.attachShader(this.fadeProgram, fadeFs);
-    gl.linkProgram(this.fadeProgram);
+    const decayFs = this.app.webgl.compileShader(decayFsSource, gl.FRAGMENT_SHADER);
+    this.decayProgram = gl.createProgram();
+    gl.attachShader(this.decayProgram, quadVs);
+    gl.attachShader(this.decayProgram, decayFs);
+    gl.linkProgram(this.decayProgram);
+
+    // 5. Final Screen Presentation Shader
+    const screenFsSource = `#version 300 es
+      precision highp float;
+      in vec2 v_uv;
+      out vec4 fragColor;
+      uniform sampler2D u_trailTex;
+      void main() {
+        fragColor = texture(u_trailTex, v_uv);
+      }
+    `;
+    const screenFs = this.app.webgl.compileShader(screenFsSource, gl.FRAGMENT_SHADER);
+    this.screenProgram = gl.createProgram();
+    gl.attachShader(this.screenProgram, quadVs);
+    gl.attachShader(this.screenProgram, screenFs);
+    gl.linkProgram(this.screenProgram);
   }
 
   initGPGPUBuffers() {
@@ -631,13 +681,65 @@ class GPUParticlesMode {
     gl.bindVertexArray(null);
   }
 
+  initTrailFBOs(w, h) {
+    const gl = this.app.webgl.gl;
+    if (this.trailTextures && this.trailW === w && this.trailH === h) return;
+
+    if (this.trailTextures) {
+      gl.deleteTexture(this.trailTextures[0]);
+      gl.deleteTexture(this.trailTextures[1]);
+      gl.deleteFramebuffer(this.trailFbos[0]);
+      gl.deleteFramebuffer(this.trailFbos[1]);
+    }
+
+    this.trailW = w;
+    this.trailH = h;
+    this.trailTextures = [gl.createTexture(), gl.createTexture()];
+    this.trailFbos = [gl.createFramebuffer(), gl.createFramebuffer()];
+    this.trailReadIdx = 0;
+    this.trailWriteIdx = 1;
+
+    const bgRgb = this.app.palette.hexToRGB(this.app.palette.customBg);
+    const clearR = bgRgb[0] / 255;
+    const clearG = bgRgb[1] / 255;
+    const clearB = bgRgb[2] / 255;
+
+    for (let i = 0; i < 2; i++) {
+      gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[i]);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.trailFbos[i]);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.trailTextures[i], 0);
+
+      gl.clearColor(clearR, clearG, clearB, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
   resetAllParticles() {
     this.initGPGPUBuffers();
     const gl = this.app.webgl.gl;
     if (gl) {
       const palette = this.app.palette;
       const bgRgb = palette.hexToRGB(palette.customBg);
-      gl.clearColor(bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, 1.0);
+      const r = bgRgb[0] / 255;
+      const g = bgRgb[1] / 255;
+      const b = bgRgb[2] / 255;
+
+      if (this.trailFbos) {
+        for (let i = 0; i < 2; i++) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, this.trailFbos[i]);
+          gl.clearColor(r, g, b, 1.0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.clearColor(r, g, b, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
   }
@@ -667,6 +769,9 @@ class GPUParticlesMode {
     const w = this.app.webgl.canvas.width;
     const h = this.app.webgl.canvas.height;
     const size = this.texSize;
+
+    // Ensure trail ping-pong FBOs match canvas dimensions
+    this.initTrailFBOs(w, h);
 
     // ==========================================
     // STEP 1: GPGPU Simulation Pass (MRT Textures)
@@ -717,36 +822,32 @@ class GPUParticlesMode {
     gl.bindVertexArray(null);
 
     // ==========================================
-    // STEP 2: Motion Trail Fade / Canvas Refresh
+    // STEP 2: Motion Trail Decay Pass (FBO Write)
     // ==========================================
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.trailFbos[this.trailWriteIdx]);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
     gl.viewport(0, 0, w, h);
 
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
+    gl.disable(gl.BLEND);
 
     const bgRgb = palette.hexToRGB(palette.customBg);
 
-    if (p.fadeRate <= 0.00001) {
-      // 0.00 Mode: Never Decay (infinite trail persistence)
-      // Skip the fade quad completely so trails accumulate permanently!
-    } else {
-      // Smooth fading motion blur quad across entire range
-      gl.enable(gl.BLEND);
-      gl.blendEquation(gl.FUNC_ADD);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.useProgram(this.decayProgram);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[this.trailReadIdx]);
+    gl.uniform1i(gl.getUniformLocation(this.decayProgram, 'u_trailTex'), 0);
+    gl.uniform3f(gl.getUniformLocation(this.decayProgram, 'u_bgColor'),
+      bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255);
+    gl.uniform1f(gl.getUniformLocation(this.decayProgram, 'u_fadeRate'), p.fadeRate);
 
-      gl.useProgram(this.fadeProgram);
-      gl.uniform4f(gl.getUniformLocation(this.fadeProgram, 'u_fadeColor'),
-        bgRgb[0] / 255, bgRgb[1] / 255, bgRgb[2] / 255, p.fadeRate);
-
-      gl.bindVertexArray(this.simQuadVao);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      gl.bindVertexArray(null);
-    }
+    gl.bindVertexArray(this.simQuadVao);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.bindVertexArray(null);
 
     // ==========================================
-    // STEP 3: Draw Anti-Aliased Ribbon Quads
+    // STEP 3: Draw Anti-Aliased Ribbon Quads (into Trail FBO)
     // ==========================================
     this.applyBlendMode(gl, p.blendMode || 'lighter');
 
@@ -784,10 +885,34 @@ class GPUParticlesMode {
     gl.disable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD); // Reset to default
 
-    // Swap ping-pong texture slots
-    const temp = this.readIdx;
+    // ==========================================
+    // STEP 4: Present Composite to Canvas Screen
+    // ==========================================
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, w, h);
+    gl.disable(gl.BLEND);
+
+    gl.useProgram(this.screenProgram);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.trailTextures[this.trailWriteIdx]);
+    gl.uniform1i(gl.getUniformLocation(this.screenProgram, 'u_trailTex'), 0);
+
+    gl.bindVertexArray(this.simQuadVao);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.bindVertexArray(null);
+
+    // ==========================================
+    // STEP 5: Ping-Pong Texture Swaps
+    // ==========================================
+    // Swap GPGPU simulation ping-pong textures
+    const tempSim = this.readIdx;
     this.readIdx = this.writeIdx;
-    this.writeIdx = temp;
+    this.writeIdx = tempSim;
+
+    // Swap Trail ping-pong textures
+    const tempTrail = this.trailReadIdx;
+    this.trailReadIdx = this.trailWriteIdx;
+    this.trailWriteIdx = tempTrail;
   }
 
   applyBlendMode(gl, mode) {
