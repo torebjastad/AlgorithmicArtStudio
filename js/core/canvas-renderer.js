@@ -80,7 +80,7 @@ class CanvasRenderer {
    * Apply progressive alpha decay for motion trails
    */
   applyFade(backgroundColor = '#0a0a0f', decayRate = 0.05) {
-    if (decayRate <= 0.000005) return; // 0.00: Never decay / infinite persistence
+    if (decayRate <= 0.00001) return; // 0.00: Never decay / infinite persistence
 
     this.trailCtx.save();
     this.trailCtx.globalCompositeOperation = 'destination-out';

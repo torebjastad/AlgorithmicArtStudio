@@ -233,7 +233,7 @@
               <label for="slider-fade-rate">Trail Decay Rate (Motion Blur)</label>
               <span class="val-badge" data-badge="fadeRate">0.23</span>
             </div>
-            <input type="range" id="slider-fade-rate" data-param="fadeRate" data-scale="log" data-min="0.00001" data-max="0.40" min="0" max="1000" step="1" value="933">
+            <input type="range" id="slider-fade-rate" data-param="fadeRate" data-scale="log" data-min="0.0001" data-max="0.40" min="0" max="1000" step="1" value="933">
           </div>
 
           <div class="control-group" data-show-for-mode="gpu_particles">
@@ -307,10 +307,10 @@
           <div class="control-group" data-show-for-mode="gpu_particles">
             <label for="select-taper-mode">Trail End Decay / Taper Style</label>
             <select id="select-taper-mode" class="glass-select" data-param="taperMode">
-              <option value="none" selected>Uniform Ribbon (Continuous & Crisp)</option>
+              <option value="intensity" selected>Intensity Fade Only (Constant Width)</option>
               <option value="both">Intensity + Width Fade (Feathered Needle)</option>
               <option value="width">Width Fade Only (Solid Razor Needle)</option>
-              <option value="intensity">Intensity Fade Only (Constant Width)</option>
+              <option value="none">Uniform Ribbon (No Taper)</option>
             </select>
           </div>
 
