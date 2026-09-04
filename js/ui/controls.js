@@ -573,8 +573,10 @@ class ControlsManager {
     this.app.isRunning = !this.app.isRunning;
     if (this.ui.playPauseBtn) {
       this.ui.playPauseBtn.innerHTML = this.app.isRunning ?
-        '<span class="icon">⏸</span><span>Pause</span>' :
-        '<span class="icon">▶</span><span>Play</span>';
+        '<span class="icon">⏸</span>' :
+        '<span class="icon">▶</span>';
+      this.ui.playPauseBtn.title = this.app.isRunning ? 'Pause (Space)' : 'Play (Space)';
+      this.ui.playPauseBtn.setAttribute('aria-label', this.app.isRunning ? 'Pause' : 'Play');
     }
   }
 
