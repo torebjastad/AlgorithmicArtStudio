@@ -22,6 +22,7 @@ class GPUParticlesMode {
       strokeWidth: 2.0,      // Anti-aliased line thickness
       streakLength: 0.94,    // Streamline tail length
       particleShape: 'round', // 'round', 'round_varied', 'flat'
+      blendMode: 'lighter',  // 'lighter', 'source-over', 'screen', 'lighten', 'overlay', 'multiply', 'difference'
       fadeRate: 0.23,        // Motion blur decay rate
       glowAlpha: 0.85,
       taperMode: 'intensity', // 'both', 'intensity', 'width', 'none'
@@ -734,6 +735,7 @@ class GPUParticlesMode {
     } else {
       // Smooth fading motion blur quad
       gl.enable(gl.BLEND);
+      gl.blendEquation(gl.FUNC_ADD);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
       gl.useProgram(this.fadeProgram);
@@ -748,8 +750,7 @@ class GPUParticlesMode {
     // ==========================================
     // STEP 3: Draw Anti-Aliased Ribbon Quads
     // ==========================================
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // Additive luminous glow
+    this.applyBlendMode(gl, p.blendMode || 'lighter');
 
     gl.useProgram(this.renderProgram);
 
@@ -783,11 +784,62 @@ class GPUParticlesMode {
     gl.bindVertexArray(null);
 
     gl.disable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD); // Reset to default
 
     // Swap ping-pong texture slots
     const temp = this.readIdx;
     this.readIdx = this.writeIdx;
     this.writeIdx = temp;
+  }
+
+  applyBlendMode(gl, mode) {
+    gl.enable(gl.BLEND);
+    switch (mode) {
+      case 'source-over':
+        // Solid Alpha: Overlapping segments and intersections do not double-accumulate.
+        // Yields completely uniform, continuous ribbons with zero internal dots.
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+
+      case 'screen':
+        // Screen: Soft, ethereal radiance that softens bright highlights.
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_COLOR);
+        break;
+
+      case 'lighten':
+        // Lighten / Max: Preserves the maximum luminance across channels.
+        // High-speed steps don't form dots, and crossing strands stay razor-sharp.
+        gl.blendEquation(gl.MAX);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        break;
+
+      case 'multiply':
+        // Multiply: Darkening ink wash / stained glass (especially striking on lighter backgrounds).
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFunc(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+
+      case 'difference':
+        // Difference / Inversion: High contrast interference
+        gl.blendEquation(gl.FUNC_SUBTRACT);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        break;
+
+      case 'overlay':
+        // Overlay: High dynamic contrast (solid core with glowing edges)
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
+        break;
+
+      case 'lighter':
+      default:
+        // Additive Luminous Glow: Electric glowing trails with incandescent pearl beads at step joints.
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        break;
+    }
   }
 
   async renderToCanvas(targetCanvas, width, height) {

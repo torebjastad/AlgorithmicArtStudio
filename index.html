@@ -223,6 +223,19 @@
           </div>
 
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
+            <label for="select-blend-mode-tab2">Canvas Blend Mode</label>
+            <select id="select-blend-mode-tab2" class="glass-select" data-param="blendMode">
+              <option value="lighter" selected>Lighter / Additive (Luminous Glow & Pearl Beads)</option>
+              <option value="source-over">Solid Alpha (Uniform Seamless Ribbons)</option>
+              <option value="screen">Screen (Soft Ethereal Radiance)</option>
+              <option value="lighten">Lighten / Max (Crisp Non-Blooming Strands)</option>
+              <option value="overlay">Overlay (High Dynamic Contrast)</option>
+              <option value="multiply">Multiply (Watercolor & Ink Pigment)</option>
+              <option value="difference">Difference (Psychedelic Inversion)</option>
+            </select>
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <div class="label-row">
               <label for="slider-fade-rate">Trail Decay Rate (Motion Blur)</label>
               <span class="val-badge" data-badge="fadeRate">0.23</span>
@@ -332,14 +345,16 @@
             </label>
           </div>
 
-          <div class="control-group" data-show-for-mode="flow,ribbons">
+          <div class="control-group" data-show-for-mode="flow,ribbons,gpu_particles">
             <label for="select-blend-mode">Canvas Blend Mode</label>
             <select id="select-blend-mode" class="glass-select" data-param="blendMode">
-              <option value="lighter">Lighter / Additive (Luminous Glow)</option>
-              <option value="screen">Screen (Soft Ethereal)</option>
-              <option value="source-over">Standard Alpha (Source Over)</option>
-              <option value="overlay">Overlay (High Contrast)</option>
-              <option value="multiply">Multiply (Ink Pigment)</option>
+              <option value="lighter" selected>Lighter / Additive (Luminous Glow & Pearl Beads)</option>
+              <option value="source-over">Solid Alpha (Uniform Seamless Ribbons)</option>
+              <option value="screen">Screen (Soft Ethereal Radiance)</option>
+              <option value="lighten">Lighten / Max (Crisp Non-Blooming Strands)</option>
+              <option value="overlay">Overlay (High Dynamic Contrast)</option>
+              <option value="multiply">Multiply (Watercolor & Ink Pigment)</option>
+              <option value="difference">Difference (Psychedelic Inversion)</option>
             </select>
           </div>
 
