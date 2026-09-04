@@ -482,13 +482,115 @@ class ControlsManager {
     if (!mode || !mode.params) return;
 
     const p = mode.params;
-    if (p.noiseScale !== undefined) p.noiseScale = 0.001 + Math.random() * 0.006;
-    if (p.octaves !== undefined) p.octaves = Math.floor(2 + Math.random() * 4);
-    if (p.persistence !== undefined) p.persistence = 0.35 + Math.random() * 0.35;
-    if (p.particleSpeed !== undefined) p.particleSpeed = 1.5 + Math.random() * 3.5;
-    if (p.strokeWidth !== undefined) p.strokeWidth = 0.8 + Math.random() * 3.0;
-    if (p.warpIntensity !== undefined) p.warpIntensity = 1.5 + Math.random() * 3.0;
-    if (p.scale !== undefined) p.scale = 1.5 + Math.random() * 3.0;
+    const modeKey = this.app.currentModeKey;
+
+    // 1. Noise Scale: Tailored per mode for optimal aesthetics
+    if (p.noiseScale !== undefined) {
+      if (modeKey === 'gpu_particles') {
+        // GPU particles thrive on ultra-wide, silky cosmic flows
+        p.noiseScale = 0.0004 + Math.random() * 0.0010;
+      } else if (modeKey === 'terrain3d') {
+        p.noiseScale = 0.02 + Math.random() * 0.03;
+      } else {
+        p.noiseScale = 0.0015 + Math.random() * 0.0035;
+      }
+      p.noiseScale = Math.round(p.noiseScale * 100000) / 100000;
+    }
+
+    // 2. Noise Type: Explore all dynamic vector flow field topologies
+    if (p.noiseType !== undefined) {
+      const types = ['curl', 'perlin', 'simplex', 'vortex'];
+      p.noiseType = types[Math.floor(Math.random() * types.length)];
+    }
+
+    // 3. Octaves & Fractal Persistence
+    if (p.octaves !== undefined) {
+      p.octaves = Math.floor(2 + Math.random() * 3); // 2, 3, or 4
+    }
+    if (p.persistence !== undefined) {
+      p.persistence = Math.round((0.40 + Math.random() * 0.25) * 100) / 100;
+    }
+    if (p.lacunarity !== undefined) {
+      p.lacunarity = Math.round((1.8 + Math.random() * 0.5) * 10) / 10;
+    }
+
+    // 4. Particle Flow Velocity (Calibrated to User Perception):
+    // 0.05: very slow, 0.10: slow, 0.50: pleasantly fast, 1.00: very fast. Very seldom above 1.0.
+    if (p.particleSpeed !== undefined) {
+      const r = Math.random();
+      let speed;
+      if (r < 0.20) {
+        // Very slow / meditative (0.04 to 0.10)
+        speed = 0.04 + Math.random() * 0.06;
+      } else if (r < 0.65) {
+        // Slow to moderate flow (0.10 to 0.40)
+        speed = 0.10 + Math.random() * 0.30;
+      } else if (r < 0.93) {
+        // Pleasantly fast & lively (0.40 to 0.85)
+        speed = 0.40 + Math.random() * 0.45;
+      } else {
+        // Very fast / burst (0.85 to 1.20) - only ~3.5% chance to exceed 1.0
+        speed = 0.85 + Math.random() * 0.35;
+      }
+      p.particleSpeed = Math.round(speed * 1000) / 1000;
+    }
+
+    // 5. Particle Size / Stroke Width
+    if (p.strokeWidth !== undefined) {
+      p.strokeWidth = Math.round((1.0 + Math.random() * 3.2) * 10) / 10;
+    }
+
+    // 6. Particle Shape Profile
+    if (p.particleShape !== undefined) {
+      const shapes = ['round', 'round_varied', 'flat'];
+      p.particleShape = shapes[Math.floor(Math.random() * shapes.length)];
+    }
+
+    // 7. Canvas Blend Mode
+    if (p.blendMode !== undefined) {
+      const blendModes = ['lighter', 'source-over', 'screen', 'lighten', 'overlay'];
+      p.blendMode = blendModes[Math.floor(Math.random() * blendModes.length)];
+    }
+
+    // 8. Trail Decay Rate (Motion Blur)
+    if (p.fadeRate !== undefined) {
+      const r = Math.random();
+      if (r < 0.12) {
+        // Permanent continuous tapestry
+        p.fadeRate = 0.00;
+      } else if (r < 0.35) {
+        // Long, silky lingering trails
+        p.fadeRate = Math.round((0.005 + Math.random() * 0.045) * 1000) / 1000;
+      } else if (r < 0.80) {
+        // Medium motion blur
+        p.fadeRate = Math.round((0.06 + Math.random() * 0.18) * 100) / 100;
+      } else {
+        // Shorter, crisper streaks
+        p.fadeRate = Math.round((0.24 + Math.random() * 0.12) * 100) / 100;
+      }
+    }
+
+    // 9. Trail Taper Style (GPU mode)
+    if (p.taperMode !== undefined) {
+      const tapers = ['intensity', 'both', 'width', 'none'];
+      p.taperMode = tapers[Math.floor(Math.random() * tapers.length)];
+    }
+    if (p.streakLength !== undefined) {
+      p.streakLength = Math.round((0.8 + Math.random() * 1.5) * 100) / 100;
+    }
+    if (p.glowAlpha !== undefined) {
+      p.glowAlpha = Math.round((0.6 + Math.random() * 0.4) * 100) / 100;
+    }
+
+    // 10. Domain Warp & 3D Terrain specific parameters
+    if (p.warpIntensity !== undefined) p.warpIntensity = Math.round((1.5 + Math.random() * 2.5) * 10) / 10;
+    if (p.scale !== undefined) p.scale = Math.round((1.5 + Math.random() * 2.5) * 10) / 10;
+    if (p.contourLevels !== undefined) p.contourLevels = Math.floor(12 + Math.random() * 26);
+    if (p.fillBands !== undefined) p.fillBands = Math.random() > 0.35;
+    if (p.renderStyle !== undefined) {
+      const styles = ['wireframe', 'shaded', 'points', 'hybrid'];
+      p.renderStyle = styles[Math.floor(Math.random() * styles.length)];
+    }
 
     // Pick random palette
     const keys = Object.keys(this.app.palette.palettes);
@@ -502,6 +604,10 @@ class ControlsManager {
 
     this.app.resetCurrentMode();
     this.syncControlsWithMode();
+    if (typeof mode.resetAllParticles === 'function') {
+      mode.resetAllParticles();
+    }
+    this.showNotification(`🎲 Rolled: ${this.app.palette.current.name} (${p.particleSpeed !== undefined ? p.particleSpeed.toFixed(2) + ' vel' : ''})`);
   }
 
   togglePlayPause() {
