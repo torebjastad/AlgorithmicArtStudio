@@ -214,6 +214,15 @@
           </div>
 
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
+            <label for="select-particle-shape">Particle Shape Profile</label>
+            <select id="select-particle-shape" class="glass-select" data-param="particleShape">
+              <option value="round" selected>Round Particles (Continuous Smooth / Round Caps)</option>
+              <option value="round_varied">Round Particles (Organic Varied Radiuses)</option>
+              <option value="flat">Flat / Ribbon Bands (Angular Brush)</option>
+            </select>
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <div class="label-row">
               <label for="slider-fade-rate">Trail Decay Rate (Motion Blur)</label>
               <span class="val-badge" data-badge="fadeRate">0.23</span>
@@ -305,6 +314,15 @@
               <span class="val-badge" data-badge="strokeWidth">2.00</span>
             </div>
             <input type="range" id="slider-stroke-width" data-param="strokeWidth" min="0.5" max="12.0" step="0.1" value="2.0">
+          </div>
+
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
+            <label for="select-particle-shape-tab3">Particle Shape Profile</label>
+            <select id="select-particle-shape-tab3" class="glass-select" data-param="particleShape">
+              <option value="round" selected>Round Particles (Continuous Smooth / Round Caps)</option>
+              <option value="round_varied">Round Particles (Organic Varied Radiuses)</option>
+              <option value="flat">Flat / Ribbon Bands (Angular Brush)</option>
+            </select>
           </div>
 
           <div class="control-group" data-show-for-mode="flow">

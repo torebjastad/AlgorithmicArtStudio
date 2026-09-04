@@ -21,6 +21,7 @@ class FlowFieldMode {
       particleSpeed: 2.5,
       stepLength: 1.5,
       strokeWidth: 1.5,
+      particleShape: 'round', // 'round', 'round_varied', 'flat'
       taperWidth: true,
       fadeRate: 0.04,
       blendMode: 'lighter',
@@ -79,7 +80,11 @@ class FlowFieldMode {
     this.maxLife[i] = (180 + Math.random() * 360) * speedScale;
     this.life[i] = Math.random() * this.maxLife[i];
     this.colorT[i] = Math.random();
-    this.strokeW[i] = 0.5 + Math.random() * this.params.strokeWidth;
+    if (this.params.particleShape === 'round_varied') {
+      this.strokeW[i] = 0.5 + Math.random() * this.params.strokeWidth;
+    } else {
+      this.strokeW[i] = this.params.strokeWidth;
+    }
   }
 
   resetAllParticles() {
@@ -205,8 +210,8 @@ class FlowFieldMode {
     renderer.setBlendMode(p.blendMode);
 
     ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    ctx.lineCap = (p.particleShape === 'flat') ? 'butt' : 'round';
+    ctx.lineJoin = (p.particleShape === 'flat') ? 'miter' : 'round';
 
     // Batch draw particle strokes
     for (let i = 0; i < count; i++) {

@@ -21,6 +21,7 @@ class GPUParticlesMode {
       particleSpeed: 0.19,   // Exact user calibrated velocity
       strokeWidth: 2.0,      // Anti-aliased line thickness
       streakLength: 0.94,    // Streamline tail length
+      particleShape: 'round', // 'round', 'round_varied', 'flat'
       fadeRate: 0.23,        // Motion blur decay rate
       glowAlpha: 0.85,
       taperMode: 'intensity', // 'both', 'intensity', 'width', 'none'
@@ -289,9 +290,12 @@ class GPUParticlesMode {
       layout(location = 0) in vec2 a_quadPos;     // x: t (0..1), y: side (-1..+1)
       layout(location = 1) in vec2 a_particleUv;  // Per-instance UV coordinate
 
-      out float v_side;
+      out vec2 v_localPos;
+      out float v_L;
+      out float v_R;
       out float v_alpha;
       out float v_colorT;
+      flat out int v_shape;
 
       uniform sampler2D u_posLifeTex;
       uniform sampler2D u_velSeedTex;
@@ -301,6 +305,7 @@ class GPUParticlesMode {
       uniform float u_streakLength;
       uniform int u_taperMode; // 0: both, 1: intensity only, 2: width only, 3: none / uniform
       uniform float u_fadeRate;
+      uniform int u_particleShape; // 0: round, 1: round_varied, 2: flat
 
       void main() {
         vec4 posLife = texture(u_posLifeTex, a_particleUv);
@@ -308,6 +313,7 @@ class GPUParticlesMode {
 
         vec2 pos = posLife.xy;
         vec2 prevPos = prevSeed.xy; // Exact historical position from previous frame
+        vec2 seed = prevSeed.zw;
 
         // Discard retired off-screen particles
         if (pos.x < -100.0 || prevPos.x < -100.0) {
@@ -317,7 +323,8 @@ class GPUParticlesMode {
 
         vec2 dir = pos - prevPos;
         float len = length(dir);
-        vec2 norm = (len > 0.0001) ? vec2(-dir.y, dir.x) / len : vec2(0.0, 1.0);
+        vec2 uDir = (len > 0.0001) ? dir / len : vec2(1.0, 0.0);
+        vec2 vDir = vec2(-uDir.y, uDir.x);
 
         float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
 
@@ -351,22 +358,36 @@ class GPUParticlesMode {
           }
         }
 
-        // Per-particle organic size variation (matching CPU mode: 0.5 + Math.random() * strokeWidth)
-        float sizeHash = fract(sin(dot(prevSeed.zw, vec2(12.9898, 78.233))) * 43758.5453);
-        float sizeVar = mix(0.4, 1.25, sizeHash);
+        // Particle Radius / Half-width calculation
+        float sizeVar = 1.0;
+        if (u_particleShape == 1) {
+          // Organic varied radiuses (various radiuses)
+          float sizeHash = fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
+          sizeVar = mix(0.4, 1.35, sizeHash);
+        }
 
-        float halfWidth = max(0.35, u_strokeWidth * 0.5 * sizeVar) * widthMultiplier;
+        float radius = max(0.4, u_strokeWidth * 0.5 * sizeVar) * widthMultiplier;
 
-        // Tail position with streak length support
-        float sLen = max(0.5, u_streakLength);
+        // Tail and Head endpoints:
+        // Ensure segment covers distance moved to form an unbroken continuous trail
+        float sLen = max(1.0, u_streakLength);
         vec2 tailPos = pos - dir * sLen;
-        vec2 basePos = mix(tailPos, pos, a_quadPos.x);
-        vec2 screenPos = basePos + norm * (a_quadPos.y * halfWidth);
+        float segLen = length(pos - tailPos);
+
+        // Expand quad bounding box by radius + 1.5px margin for smooth anti-aliasing and circular end caps
+        float margin = radius + 1.5;
+        float uCoord = -margin + a_quadPos.x * (segLen + 2.0 * margin);
+        float vCoord = a_quadPos.y * margin;
+
+        vec2 screenPos = tailPos + uDir * uCoord + vDir * vCoord;
 
         vec2 clipSpace = (screenPos / u_resolution) * 2.0 - 1.0;
         gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
 
-        v_side = a_quadPos.y;
+        v_localPos = vec2(uCoord, vCoord);
+        v_L = segLen;
+        v_R = radius;
+        v_shape = u_particleShape;
         v_alpha = alphaMultiplier;
         v_colorT = fract(lifeRatio);
       }
@@ -375,9 +396,12 @@ class GPUParticlesMode {
     const renderFsSource = `#version 300 es
       precision highp float;
 
-      in float v_side;
+      in vec2 v_localPos;
+      in float v_L;
+      in float v_R;
       in float v_alpha;
       in float v_colorT;
+      flat in int v_shape;
       out vec4 fragColor;
 
       uniform vec3 u_palA;
@@ -391,12 +415,31 @@ class GPUParticlesMode {
       }
 
       void main() {
-        // Analytic edge anti-aliasing with solid luminous core
-        float edgeDist = abs(v_side);
-        float edgeAntialias = smoothstep(1.0, 0.65, edgeDist);
+        float u = v_localPos.x;
+        float v = v_localPos.y;
+        float r = v_R;
+        float mask = 0.0;
+
+        if (v_shape == 0 || v_shape == 1) {
+          // Round Particles (Continuous Round-Capped Capsules)
+          // Exact distance to clamped line segment [0, v_L]
+          float t = clamp(u, 0.0, v_L);
+          float dist = length(vec2(u - t, v));
+          // Analytic sub-pixel edge anti-aliasing
+          mask = smoothstep(r + 0.75, r - 0.75, dist);
+        } else {
+          // Flat Ribbon Bands (Angular Brush with continuous seamless overlap)
+          float edgeAlpha = smoothstep(r + 0.75, r - 0.75, abs(v));
+          float capAlpha = 1.0;
+          if (u < 0.0) capAlpha = smoothstep(-0.8, 0.0, u);
+          else if (u > v_L) capAlpha = smoothstep(v_L + 0.8, v_L, u);
+          mask = edgeAlpha * capAlpha;
+        }
+
+        if (mask <= 0.002) discard;
 
         vec3 col = cosinePalette(v_colorT);
-        fragColor = vec4(col, v_alpha * edgeAntialias * u_glowAlpha);
+        fragColor = vec4(col, v_alpha * mask * u_glowAlpha);
       }
     `;
 
@@ -702,6 +745,9 @@ class GPUParticlesMode {
     const taperModeMap = { both: 0, intensity: 1, width: 2, none: 3 };
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_taperMode'), taperModeMap[p.taperMode] ?? 0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_fadeRate'), p.fadeRate);
+
+    const shapeMap = { round: 0, round_varied: 1, flat: 2 };
+    gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_particleShape'), shapeMap[p.particleShape] ?? 0);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palA'), cosParams.a[0], cosParams.a[1], cosParams.a[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palB'), cosParams.b[0], cosParams.b[1], cosParams.b[2]);
     gl.uniform3f(gl.getUniformLocation(this.renderProgram, 'u_palC'), cosParams.c[0], cosParams.c[1], cosParams.c[2]);
