@@ -46,11 +46,25 @@ Before making modifications, review the relevant knowledge documents in `doc/`:
 - Always sync `<span class="val-badge">` badges with appropriate precision formatting via `ControlsManager.formatBadge()`.
 - Use `data-show-for-mode` and `data-show-for-spawn-mode` for dynamic, clutter-free HUD presentation.
 
-### 4. Verification Protocol
+### 4. Automated Testing Standard
+- **Implement Tests Whenever Sensible**: Automated tests in `tests/*.test.js` must be implemented whenever it is sensible to do so (e.g., when adding new generative modes or parameters, changing control logic or formatting, modifying mathematical equations, or fixing bugs).
+- **Zero-Dependency Native Runner**: The test suite uses Node's native test runner (`node:test` and `node:assert/strict`) paired with lightweight DOM/WebGL mocks, strictly maintaining the project's zero external runtime/dev dependency ethos.
+- **Run Tests**: Execute `npm test` or `node --test tests/*.test.js` to run all tests.
+
+---
+
+## 🔍 Verification Protocol
+
 Before completing any task or committing changes:
-1. Run syntax verification across all JavaScript files:
+1. **Run Syntax Check**: Verify clean syntax across all JavaScript files:
    ```powershell
    node --check js/app.js js/ui/controls.js js/modes/*.js js/core/*.js js/noise/*.js
    ```
-2. Verify that `git status` and `git diff` contain only intentional, surgical edits.
-3. Update the corresponding markdown documents in `doc/` to reflect all changes.
+2. **Run Automated Test Suite**: Verify that all test suites pass without regression:
+   ```powershell
+   node --test tests/*.test.js
+   ```
+3. **Implement / Update Tests**: Whenever sensible, implement new test cases in `tests/` to cover new logic, parameters, UI controls, or edge cases.
+4. **Inspect Git Status**: Verify that `git status` and `git diff` contain only intentional, surgical edits.
+5. **Update Documentation**: Update the corresponding markdown documents in `doc/` (and this `AGENT.md` if applicable) to reflect all changes.
+

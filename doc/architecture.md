@@ -31,6 +31,7 @@ AlgorithmicArtStudio/
 │   │   └── curl.js            # Analytic & finite-difference curl noise
 │   └── ui/
 │       └── controls.js        # HUD controls, slider binding, presets, shortcuts
+├── tests/                     # Automated unit and integration test suite (Node test runner)
 └── doc/                       # Comprehensive project documentation
 ```
 
@@ -86,3 +87,15 @@ animate(now) {
 - Ignores mouse down events originating inside HUD panels (`#hud`) or modals (`.modal`).
 - Supports touch devices (`touchstart`, `touchmove`, `touchend`).
 - Drives the visual brush cursor `#mouse-brush-cursor` for the Mouse Pointer Painting mode.
+
+---
+
+## Testing & Quality Assurance
+
+Automated unit and integration testing is implemented using Node.js's built-in test runner (`node:test` and `node:assert/strict`) requiring no external npm dependencies:
+- **`tests/controls.test.js`**: Validates slider log-scaling, formatting, and DOM badge rendering.
+- **`tests/menu-ui.test.js`**: Checks DOM interactive ID uniqueness, tab integrity, and parameter existence.
+- **`tests/mode-params.test.js`**: Tests parameter dictionaries, default values, and time integration across generative modes.
+
+Tests are run via `node --test tests/*.test.js` or `npm test`.
+
