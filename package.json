@@ -4,7 +4,8 @@
   "description": "Lightning-fast WebGL2 & GPGPU generative art studio powered by Curl, Simplex, and Perlin noise vector fields, Domain Warping, and 4K/8K export.",
   "main": "index.html",
   "scripts": {
-    "start": "npx serve ."
+    "start": "npx serve .",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [
     "generative-art",

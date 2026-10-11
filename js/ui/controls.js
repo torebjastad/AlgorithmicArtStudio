@@ -304,6 +304,13 @@ class ControlsManager {
     }
     if (paramKey === 'mouseSpawnDiameter') return `${Math.round(val)} px`;
     if (paramKey === 'mouseSpawnRate') return `${Math.round(val)} / frame`;
+    if (paramKey === 'mouseStrength') return `${val.toFixed(1)}x`;
+    if (paramKey === 'flySpeed') return `${val.toFixed(2)}x`;
+    if (paramKey === 'ribbonCount') return `${Math.round(val)} strands`;
+    if (paramKey === 'amplitude') return `${Math.round(val)} px`;
+    if (paramKey === 'ribbonWidth') return `${Math.round(val)} px`;
+    if (paramKey === 'lightIntensity') return `${val.toFixed(2)}x`;
+    if (paramKey === 'contourLevels') return `${Math.round(val)} levels`;
     if (val >= 100 && Math.abs(val - Math.round(val)) < 0.001) return Math.round(val).toLocaleString();
     if (val < 0.001) return val.toFixed(4);
     if (val < 0.01) return val.toFixed(4);
@@ -420,7 +427,7 @@ class ControlsManager {
     document.querySelectorAll('[data-show-for-mode]').forEach(el => {
       const allowedModes = el.dataset.showForMode.split(',').map(m => m.trim());
       const currentModeKey = this.app.currentModeKey;
-      el.style.display = allowedModes.includes(currentModeKey) ? 'block' : 'none';
+      el.style.display = allowedModes.includes(currentModeKey) ? '' : 'none';
     });
 
     // Sync input values & badges for visible elements
@@ -451,7 +458,7 @@ class ControlsManager {
   syncSpawnModeControls(spawnMode) {
     document.querySelectorAll('[data-show-for-spawn-mode]').forEach(el => {
       const allowed = el.dataset.showForSpawnMode.split(',').map(m => m.trim());
-      el.style.display = allowed.includes(spawnMode) ? 'block' : 'none';
+      el.style.display = allowed.includes(spawnMode) ? '' : 'none';
     });
   }
 
