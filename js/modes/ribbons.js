@@ -12,6 +12,7 @@ class RibbonsMode {
     this.params = {
       ribbonCount: 16,
       segments: 100,
+      noiseScale: 0.003,
       scale: 0.003,
       octaves: 3,
       persistence: 0.5,
@@ -33,6 +34,7 @@ class RibbonsMode {
     const h = this.app.height;
     const noise = this.app.perlin;
     const zTime = time * p.timeSpeed;
+    const scale = p.noiseScale ?? p.scale ?? 0.003;
 
     this.cachedRibbons = [];
 
@@ -46,8 +48,8 @@ class RibbonsMode {
         const segT = s / p.segments;
         const x = segT * (w + 100) - 50;
 
-        const nx = x * p.scale;
-        const ny = (baseY + r * 10) * p.scale;
+        const nx = x * scale;
+        const ny = (baseY + r * 10) * scale;
 
         const displacement = noise.fbm3D(nx, ny, zTime + r * 0.1, p.octaves, p.lacunarity, p.persistence) * p.amplitude;
         const widthMod = Math.sin(segT * Math.PI) * p.ribbonWidth * (0.5 + 0.5 * Math.sin(segT * 10 + time * 0.005));

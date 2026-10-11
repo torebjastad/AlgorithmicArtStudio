@@ -21,7 +21,7 @@ class DomainWarpMode {
       contrast: 1.25,
       brightness: 0.0,
       enableMouseDistortion: false,
-      mouseInfluence: 0.0
+      mouseInfluence: 0.85
     };
 
     this.programName = 'domain_warp';

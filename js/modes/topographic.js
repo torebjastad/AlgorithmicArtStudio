@@ -10,6 +10,7 @@ class TopographicMode {
     this.name = 'Topographic Isolines';
 
     this.params = {
+      noiseScale: 0.004,
       scale: 0.004,
       octaves: 4,
       persistence: 0.5,
@@ -51,12 +52,13 @@ class TopographicMode {
     const zTime = time * p.timeSpeed;
     const noise = this.app.perlin;
 
+    const scale = p.noiseScale ?? p.scale ?? 0.004;
     // Fill heightmap grid
     for (let j = 0; j <= rows; j++) {
       for (let i = 0; i <= cols; i++) {
         const x = i * cellW;
         const y = j * cellH;
-        const val = noise.fbm3D(x * p.scale, y * p.scale, zTime, p.octaves, p.lacunarity, p.persistence);
+        const val = noise.fbm3D(x * scale, y * scale, zTime, p.octaves, p.lacunarity, p.persistence);
         // Normalize to [0, 1]
         this.grid[j * this.gridW + i] = val * 0.5 + 0.5;
       }
