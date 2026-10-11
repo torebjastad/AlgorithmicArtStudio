@@ -21,7 +21,7 @@ class TopographicMode {
       majorStrokeMultiplier: 2.2,
       fillBands: true,
       glowEffect: false,
-      timeSpeed: 0.003,
+      timeSpeed: 0.0,
       gridResolution: 80 // Sampling grid resolution
     };
 

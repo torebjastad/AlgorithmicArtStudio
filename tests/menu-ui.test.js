@@ -100,4 +100,15 @@ test('Menu UI & HTML Parameter Architecture', async (t) => {
     assert.ok(html.includes('data-param="ribbonWidth"'));
     assert.ok(html.includes('data-param="lightIntensity"'));
   });
+
+  await t.test('Evolution / timeSpeed slider defaults to 0.0 and allows higher values than 0.2', () => {
+    const inputMatch = html.match(/<input[^>]*id=["']slider-time-speed["'][^>]*>/);
+    assert.ok(inputMatch, 'slider-time-speed input should exist in index.html');
+    const inputTag = inputMatch[0];
+    assert.ok(/value=["']0(?:\.0+)?["']/.test(inputTag), 'slider-time-speed should default to 0.0');
+    const maxMatch = inputTag.match(/max=["']([\d.]+)["']/);
+    assert.ok(maxMatch, 'slider-time-speed should have a max attribute');
+    const maxVal = parseFloat(maxMatch[1]);
+    assert.ok(maxVal > 0.2, `slider-time-speed max should be higher than 0.2 (found ${maxVal})`);
+  });
 });

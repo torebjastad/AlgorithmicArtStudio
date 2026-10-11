@@ -17,7 +17,7 @@ class GPUParticlesMode {
       octaves: 3,
       persistence: 0.5,
       lacunarity: 2.0,
-      timeSpeed: 0.003,
+      timeSpeed: 0.0,
       particleSpeed: 0.19,   // Exact user calibrated velocity
       strokeWidth: 2.0,      // Anti-aliased line thickness
       streakLength: 0.94,    // Streamline tail length

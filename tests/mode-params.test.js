@@ -115,25 +115,41 @@ test('Mode Parameter Integrity & Normalization', async (t) => {
     assert.equal(typeof gpu.params.mouseStrength, 'number');
   });
 
-  await t.test('Modes continuously integrate fieldTime so timeSpeed does not act as an offset scrubber', () => {
+  await t.test('Modes default timeSpeed to 0.0 (frozen) and continuously integrate fieldTime', () => {
     const gpu = new GPUParticlesMode(mockApp);
     const flow = new FlowFieldMode(mockApp);
+    const topo = new TopographicMode(mockApp);
+    const ribbons = new RibbonsMode(mockApp);
+    const domainWarp = new DomainWarpMode(mockApp);
+
+    assert.equal(gpu.params.timeSpeed, 0.0, 'gpu_particles timeSpeed should default to 0.0');
+    assert.equal(flow.params.timeSpeed, 0.0, 'flow timeSpeed should default to 0.0');
+    assert.equal(topo.params.timeSpeed, 0.0, 'topographic timeSpeed should default to 0.0');
+    assert.equal(ribbons.params.timeSpeed, 0.0, 'ribbons timeSpeed should default to 0.0');
+    assert.equal(domainWarp.params.timeSpeed, 0.0, 'domainWarp timeSpeed should default to 0.0');
 
     assert.equal(gpu.fieldTime || 0, 0);
+    // At default 0.0, fieldTime stays 0
+    gpu.update(0.1, 100);
+    assert.equal(gpu.fieldTime, 0);
+
+    // When activated, fieldTime accumulates smoothly
+    gpu.params.timeSpeed = 0.01;
     gpu.update(0.1, 100);
     const t1 = gpu.fieldTime;
-    assert.ok(t1 > 0, 'fieldTime should accumulate forward with update');
+    assert.ok(t1 > 0, 'fieldTime should accumulate forward when timeSpeed > 0');
 
     // Changing timeSpeed should NOT jump fieldTime instantaneously
-    gpu.params.timeSpeed = 0.015;
+    gpu.params.timeSpeed = 0.25;
     assert.equal(gpu.fieldTime, t1, 'Changing timeSpeed slider must not jump fieldTime instantaneously');
 
-    // Setting timeSpeed to 0 freezes fieldTime evolution
+    // Setting timeSpeed back to 0 freezes fieldTime evolution
     gpu.params.timeSpeed = 0.0;
     gpu.update(0.1, 200);
     assert.equal(gpu.fieldTime, t1, 'Setting timeSpeed to 0 must freeze fieldTime');
 
     // Verify flow fields behaves identically
+    flow.params.timeSpeed = 0.01;
     flow.update(0.1, 100);
     const ft1 = flow.fieldTime;
     assert.ok(ft1 > 0);

@@ -15,7 +15,7 @@ class DomainWarpMode {
       octaves: 5,
       persistence: 0.52,
       lacunarity: 2.0,
-      timeSpeed: 0.08,
+      timeSpeed: 0.0,
       specularShading: true,
       lightIntensity: 1.3,
       contrast: 1.25,

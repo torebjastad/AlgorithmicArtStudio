@@ -20,7 +20,7 @@ class RibbonsMode {
       strokeWidth: 2.0,
       ribbonWidth: 45,
       amplitude: 160,
-      timeSpeed: 0.008,
+      timeSpeed: 0.0,
       blendMode: 'screen',
       wireframe: false
     };

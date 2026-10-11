@@ -17,7 +17,7 @@ class FlowFieldMode {
       octaves: 3,
       persistence: 0.5,
       lacunarity: 2.0,
-      timeSpeed: 0.002,
+      timeSpeed: 0.0,
       particleSpeed: 2.5,
       stepLength: 1.5,
       strokeWidth: 1.5,
