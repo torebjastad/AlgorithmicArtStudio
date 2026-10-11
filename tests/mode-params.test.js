@@ -40,7 +40,11 @@ function createMockApp() {
     },
     simplex: {
       noise3D: () => 0.5,
+      fbm3D: () => 0.5,
       reseed: () => {}
+    },
+    curl: {
+      curl2D: () => ({ x: 0.5, y: 0.5 })
     },
     palette: {
       palettes: {
@@ -109,5 +113,32 @@ test('Mode Parameter Integrity & Normalization', async (t) => {
     const gpu = new GPUParticlesMode(mockApp);
     assert.equal(typeof flow.params.mouseStrength, 'number');
     assert.equal(typeof gpu.params.mouseStrength, 'number');
+  });
+
+  await t.test('Modes continuously integrate fieldTime so timeSpeed does not act as an offset scrubber', () => {
+    const gpu = new GPUParticlesMode(mockApp);
+    const flow = new FlowFieldMode(mockApp);
+
+    assert.equal(gpu.fieldTime || 0, 0);
+    gpu.update(0.1, 100);
+    const t1 = gpu.fieldTime;
+    assert.ok(t1 > 0, 'fieldTime should accumulate forward with update');
+
+    // Changing timeSpeed should NOT jump fieldTime instantaneously
+    gpu.params.timeSpeed = 0.015;
+    assert.equal(gpu.fieldTime, t1, 'Changing timeSpeed slider must not jump fieldTime instantaneously');
+
+    // Setting timeSpeed to 0 freezes fieldTime evolution
+    gpu.params.timeSpeed = 0.0;
+    gpu.update(0.1, 200);
+    assert.equal(gpu.fieldTime, t1, 'Setting timeSpeed to 0 must freeze fieldTime');
+
+    // Verify flow fields behaves identically
+    flow.update(0.1, 100);
+    const ft1 = flow.fieldTime;
+    assert.ok(ft1 > 0);
+    flow.params.timeSpeed = 0.0;
+    flow.update(0.1, 200);
+    assert.equal(flow.fieldTime, ft1);
   });
 });

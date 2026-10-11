@@ -302,6 +302,10 @@ class ControlsManager {
       if (val < 0.1) return val.toFixed(3);
       return val.toFixed(2);
     }
+    if (paramKey === 'timeSpeed') {
+      if (val <= 0.00001) return '0.0000 (Frozen)';
+      return val.toFixed(4);
+    }
     if (paramKey === 'mouseSpawnDiameter') return `${Math.round(val)} px`;
     if (paramKey === 'mouseSpawnRate') return `${Math.round(val)} / frame`;
     if (paramKey === 'mouseStrength') return `${val.toFixed(1)}x`;

@@ -143,7 +143,8 @@ class FlowFieldMode {
     const count = Math.min(p.particleCount, this.maxParticles);
     const w = this.app.width;
     const h = this.app.height;
-    const zTime = time * p.timeSpeed;
+    this.fieldTime = (this.fieldTime || 0) + dt * (p.timeSpeed || 0) * 15.0;
+    const zTime = this.fieldTime;
     const mouse = this.app.mouse;
     const noise = this.app.perlin;
     const simplex = this.app.simplex;

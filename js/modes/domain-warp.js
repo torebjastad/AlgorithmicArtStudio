@@ -287,7 +287,8 @@ class DomainWarpMode {
   }
 
   update(dt, time) {
-    // Handled in render via time uniform
+    const p = this.params;
+    this.fieldTime = (this.fieldTime || 0) + dt * (p.timeSpeed || 0) * 15.0;
   }
 
   render(renderer) {
@@ -308,7 +309,7 @@ class DomainWarpMode {
 
     glRenderer.renderFullscreenQuad(this.programName, {
       u_resolution: [glRenderer.canvas.width, glRenderer.canvas.height],
-      u_time: this.app.time * p.timeSpeed,
+      u_time: this.fieldTime || 0.0,
       u_mouse: [mouse.x * glRenderer.dpr, (this.app.height - mouse.y) * glRenderer.dpr],
       u_mouseInfluence: mouseInf,
       u_scale: p.scale,

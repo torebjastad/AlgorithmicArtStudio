@@ -32,8 +32,8 @@ class RibbonsMode {
     const p = this.params;
     const w = this.app.width;
     const h = this.app.height;
-    const noise = this.app.perlin;
-    const zTime = time * p.timeSpeed;
+    this.fieldTime = (this.fieldTime || 0) + dt * (p.timeSpeed || 0) * 15.0;
+    const zTime = this.fieldTime;
     const scale = p.noiseScale ?? p.scale ?? 0.003;
 
     this.cachedRibbons = [];

@@ -44,6 +44,8 @@ test('ControlsManager Formatting & Logic', async (t) => {
     assert.equal(manager.formatBadge(24, 'contourLevels'), '24 levels');
     assert.equal(manager.formatBadge(80, 'mouseSpawnDiameter'), '80 px');
     assert.equal(manager.formatBadge(200, 'mouseSpawnRate'), '200 / frame');
+    assert.equal(manager.formatBadge(0.003, 'timeSpeed'), '0.0030');
+    assert.equal(manager.formatBadge(0.0, 'timeSpeed'), '0.0000 (Frozen)');
     assert.equal(manager.formatBadge(0.0, 'fadeRate'), '0.00 (Never Decay)');
     assert.equal(manager.formatBadge(262144, 'particleCount'), '262,144');
   });

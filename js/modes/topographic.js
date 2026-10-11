@@ -49,7 +49,8 @@ class TopographicMode {
       this.grid = new Float32Array(this.gridW * this.gridH);
     }
 
-    const zTime = time * p.timeSpeed;
+    this.fieldTime = (this.fieldTime || 0) + dt * (p.timeSpeed || 0) * 15.0;
+    const zTime = this.fieldTime;
     const noise = this.app.perlin;
 
     const scale = p.noiseScale ?? p.scale ?? 0.004;
