@@ -381,6 +381,36 @@ canvas {
   display: flex;
 }
 
+/* Section Dividers & Headers in Control Panes */
+.control-section-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+.control-section-header:first-child {
+  margin-top: 0;
+}
+
+.control-section-header::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px var(--accent-cyan);
+}
+
 /* Control Elements */
 .control-group {
   display: flex;
