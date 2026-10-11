@@ -82,14 +82,15 @@
       <!-- Control Tabs -->
       <nav class="tab-nav">
         <button class="tab-btn active" data-tab="tab-mode">Mode & Noise</button>
-        <button class="tab-btn" data-tab="tab-dynamics">Dynamics</button>
-        <button class="tab-btn" data-tab="tab-strokes">Strokes & 3D</button>
+        <button class="tab-btn" data-tab="tab-dynamics">Simulation</button>
+        <button class="tab-btn" data-tab="tab-strokes">Shading & Style</button>
         <button class="tab-btn" data-tab="tab-palettes">Palettes</button>
       </nav>
 
       <div class="tab-content">
         <!-- TAB 1: Mode & Noise -->
         <section class="tab-pane active" id="tab-mode">
+          <div class="control-section-header">GENERATIVE ALGORITHM</div>
           <div class="control-group">
             <label for="select-mode">Generative Mode</label>
             <select id="select-mode" class="glass-select">
@@ -113,28 +114,13 @@
             </select>
           </div>
 
+          <div class="control-section-header">MATHEMATICAL FIELD</div>
           <div class="control-group" data-show-for-mode="flow,gpu_particles,topographic,terrain3d,ribbons">
             <div class="label-row">
               <label for="slider-scale">Noise Scale / Frequency</label>
               <span class="val-badge" data-badge="noiseScale">0.0006</span>
             </div>
             <input type="range" id="slider-scale" data-param="noiseScale" data-scale="log" data-min="0.0001" data-max="0.025" min="0" max="1000" step="1" value="325">
-          </div>
-
-          <div class="control-group" data-show-for-mode="domain_warp">
-            <div class="label-row">
-              <label for="slider-dw-scale">Domain Warp Scale</label>
-              <span class="val-badge" data-badge="scale">2.50</span>
-            </div>
-            <input type="range" id="slider-dw-scale" data-param="scale" min="0.5" max="8.0" step="0.1" value="2.5">
-          </div>
-
-          <div class="control-group" data-show-for-mode="domain_warp">
-            <div class="label-row">
-              <label for="slider-warp-intensity">Warp Distortion Power</label>
-              <span class="val-badge" data-badge="warpIntensity">2.20</span>
-            </div>
-            <input type="range" id="slider-warp-intensity" data-param="warpIntensity" min="0.2" max="6.0" step="0.1" value="2.2">
           </div>
 
           <div class="control-group">
@@ -170,8 +156,11 @@
           </div>
         </section>
 
-        <!-- TAB 2: Dynamics & Particles -->
+        <!-- TAB 2: Simulation & Physics -->
         <section class="tab-pane" id="tab-dynamics">
+          <!-- Flow & GPU Particles: Emission & Flow -->
+          <div class="control-section-header" data-show-for-mode="flow,gpu_particles">EMISSION & FLOW DYNAMICS</div>
+
           <!-- GPU 1M Particle Count Slider -->
           <div class="control-group" data-show-for-mode="gpu_particles">
             <div class="label-row">
@@ -200,47 +189,10 @@
 
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <div class="label-row">
-              <label for="slider-particle-size">Particle Size / Line Width</label>
-              <span class="val-badge" data-badge="strokeWidth">2.00</span>
-            </div>
-            <input type="range" id="slider-particle-size" data-param="strokeWidth" min="0.5" max="12.0" step="0.1" value="2.0">
-          </div>
-
-          <div class="control-group" data-show-for-mode="flow,gpu_particles">
-            <label for="select-particle-shape">Particle Shape Profile</label>
-            <select id="select-particle-shape" class="glass-select" data-param="particleShape">
-              <option value="round" selected>Round Particles (Continuous Smooth / Round Caps)</option>
-              <option value="round_varied">Round Particles (Organic Varied Radiuses)</option>
-              <option value="flat">Flat / Ribbon Bands (Angular Brush)</option>
-            </select>
-          </div>
-
-          <div class="control-group" data-show-for-mode="flow,gpu_particles">
-            <label for="select-blend-mode-tab2">Canvas Blend Mode</label>
-            <select id="select-blend-mode-tab2" class="glass-select" data-param="blendMode">
-              <option value="lighter" selected>Lighter / Additive (Luminous Glow & Pearl Beads)</option>
-              <option value="source-over">Solid Alpha (Uniform Seamless Ribbons)</option>
-              <option value="screen">Screen (Soft Ethereal Radiance)</option>
-              <option value="lighten">Lighten / Max (Crisp Non-Blooming Strands)</option>
-              <option value="overlay">Overlay (High Dynamic Contrast)</option>
-              <option value="multiply">Multiply (Watercolor & Ink Pigment)</option>
-              <option value="difference">Difference (Psychedelic Inversion)</option>
-            </select>
-          </div>
-
-          <div class="control-group" data-show-for-mode="flow,gpu_particles">
-            <div class="label-row">
               <label for="slider-fade-rate">Trail Decay Rate (Motion Blur)</label>
               <span class="val-badge" data-badge="fadeRate">0.23</span>
             </div>
             <input type="range" id="slider-fade-rate" data-param="fadeRate" data-scale="log" data-min="0.0001" data-max="0.40" min="0" max="1000" step="1" value="933">
-          </div>
-
-          <div class="control-group" data-show-for-mode="gpu_particles">
-            <label class="checkbox-label">
-              <input type="checkbox" id="check-gpu-mouse" data-param="enableMouse">
-              <span>Enable Mouse Interactive Force</span>
-            </label>
           </div>
 
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
@@ -276,6 +228,16 @@
             </button>
           </div>
 
+          <!-- Flow & GPU Particles: Interactive Mouse Physics -->
+          <div class="control-section-header" data-show-for-mode="flow,gpu_particles">INTERACTIVE MOUSE FORCES</div>
+
+          <div class="control-group" data-show-for-mode="gpu_particles">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-gpu-mouse" data-param="enableMouse">
+              <span>Enable Mouse Interactive Force</span>
+            </label>
+          </div>
+
           <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <label for="select-mouse-force">Mouse Force Type</label>
             <select id="select-mouse-force" class="glass-select" data-param="mouseForce">
@@ -294,17 +256,136 @@
             <input type="range" id="slider-mouse-radius" data-param="mouseRadius" min="50" max="500" step="10" value="220">
           </div>
 
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
+            <div class="label-row">
+              <label for="slider-mouse-strength">Mouse Force Strength</label>
+              <span class="val-badge" data-badge="mouseStrength">3.0</span>
+            </div>
+            <input type="range" id="slider-mouse-strength" data-param="mouseStrength" min="0.5" max="10.0" step="0.5" value="3.0">
+          </div>
+
+          <!-- Domain Warp Dynamics -->
+          <div class="control-section-header" data-show-for-mode="domain_warp">FLUID WARP DYNAMICS</div>
+
+          <div class="control-group" data-show-for-mode="domain_warp">
+            <div class="label-row">
+              <label for="slider-dw-scale">Domain Warp Scale</label>
+              <span class="val-badge" data-badge="scale">2.50</span>
+            </div>
+            <input type="range" id="slider-dw-scale" data-param="scale" min="0.5" max="8.0" step="0.1" value="2.5">
+          </div>
+
+          <div class="control-group" data-show-for-mode="domain_warp">
+            <div class="label-row">
+              <label for="slider-warp-intensity">Warp Distortion Power</label>
+              <span class="val-badge" data-badge="warpIntensity">2.20</span>
+            </div>
+            <input type="range" id="slider-warp-intensity" data-param="warpIntensity" min="0.2" max="6.0" step="0.1" value="2.2">
+          </div>
+
           <div class="control-group" data-show-for-mode="domain_warp">
             <label class="checkbox-label">
-              <input type="checkbox" id="check-warp-mouse-dyn" data-param="enableMouseDistortion">
-              <span>Enable Mouse Cursor Distortion</span>
+              <input type="checkbox" id="check-warp-mouse" data-param="enableMouseDistortion">
+              <span>Enable Mouse Wave Distortion</span>
             </label>
+          </div>
+
+          <!-- Topographic Controls -->
+          <div class="control-section-header" data-show-for-mode="topographic">CONTOUR CARTOGRAPHY</div>
+
+          <div class="control-group" data-show-for-mode="topographic">
+            <div class="label-row">
+              <label for="slider-contours">Contour Elevation Levels</label>
+              <span class="val-badge" data-badge="contourLevels">24</span>
+            </div>
+            <input type="range" id="slider-contours" data-param="contourLevels" min="6" max="60" step="2" value="24">
+          </div>
+
+          <div class="control-group" data-show-for-mode="topographic">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-fill-bands" data-param="fillBands" checked>
+              <span>Elevation Gradient Shading</span>
+            </label>
+          </div>
+
+          <!-- 3D Terrain Controls -->
+          <div class="control-section-header" data-show-for-mode="terrain3d">3D LANDSCAPE DYNAMICS</div>
+
+          <div class="control-group" data-show-for-mode="terrain3d">
+            <div class="label-row">
+              <label for="slider-terrain-height">Mountain Peak Height</label>
+              <span class="val-badge" data-badge="heightMultiplier">220</span>
+            </div>
+            <input type="range" id="slider-terrain-height" data-param="heightMultiplier" min="50" max="500" step="10" value="220">
+          </div>
+
+          <div class="control-group" data-show-for-mode="terrain3d">
+            <div class="label-row">
+              <label for="slider-terrain-fly-speed">Horizon Flight Speed</label>
+              <span class="val-badge" data-badge="flySpeed">1.50</span>
+            </div>
+            <input type="range" id="slider-terrain-fly-speed" data-param="flySpeed" min="0.2" max="4.0" step="0.1" value="1.5">
+          </div>
+
+          <div class="control-group" data-show-for-mode="terrain3d">
+            <label class="checkbox-label">
+              <input type="checkbox" id="check-ridged" data-param="ridgedPeaks">
+              <span>Ridged Multifractal Sharp Peaks</span>
+            </label>
+          </div>
+
+          <!-- Harmonic Ribbons Controls -->
+          <div class="control-section-header" data-show-for-mode="ribbons">HARMONIC SPLINE RIBBONS</div>
+
+          <div class="control-group" data-show-for-mode="ribbons">
+            <div class="label-row">
+              <label for="slider-ribbon-count">Ribbon Strand Count</label>
+              <span class="val-badge" data-badge="ribbonCount">16</span>
+            </div>
+            <input type="range" id="slider-ribbon-count" data-param="ribbonCount" min="4" max="36" step="2" value="16">
+          </div>
+
+          <div class="control-group" data-show-for-mode="ribbons">
+            <div class="label-row">
+              <label for="slider-ribbon-amplitude">Wave Amplitude (Displacement)</label>
+              <span class="val-badge" data-badge="amplitude">160</span>
+            </div>
+            <input type="range" id="slider-ribbon-amplitude" data-param="amplitude" min="40" max="320" step="10" value="160">
+          </div>
+
+          <div class="control-group" data-show-for-mode="ribbons">
+            <div class="label-row">
+              <label for="slider-ribbon-width">Ribbon Band Width</label>
+              <span class="val-badge" data-badge="ribbonWidth">45</span>
+            </div>
+            <input type="range" id="slider-ribbon-width" data-param="ribbonWidth" min="10" max="120" step="5" value="45">
           </div>
         </section>
 
-        <!-- TAB 3: Strokes, Shading & 3D -->
+        <!-- TAB 3: Shading & Style -->
         <section class="tab-pane" id="tab-strokes">
-          <!-- GPU Particle Streamline Streak Length & Glow -->
+          <div class="control-section-header">GEOMETRY & STROKE STYLING</div>
+
+          <!-- Particle Size / Stroke Width (Universal) -->
+          <div class="control-group" data-show-for-mode="flow,gpu_particles,topographic,terrain3d,ribbons">
+            <div class="label-row">
+              <label for="slider-stroke-width">Particle Size / Stroke Width</label>
+              <span class="val-badge" data-badge="strokeWidth">2.00</span>
+            </div>
+            <input type="range" id="slider-stroke-width" data-param="strokeWidth" min="0.5" max="12.0" step="0.1" value="2.0">
+          </div>
+
+          <!-- Particle Shape Profile (Single source of truth) -->
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
+            <label for="select-particle-shape">Particle Shape Profile</label>
+            <select id="select-particle-shape" class="glass-select" data-param="particleShape">
+              <option value="round" selected>Round Particles (Continuous Smooth / Round Caps)</option>
+              <option value="round_varied">Round Particles (Organic Varied Radiuses)</option>
+              <option value="flat">Flat / Ribbon Bands (Angular Brush)</option>
+            </select>
+          </div>
+
+          <!-- GPU Streamline Streak Length & Glow -->
           <div class="control-group" data-show-for-mode="gpu_particles">
             <div class="label-row">
               <label for="slider-streak-length">Streamline Streak Length</label>
@@ -331,23 +412,6 @@
             </select>
           </div>
 
-          <div class="control-group" data-show-for-mode="flow,gpu_particles,topographic,terrain3d,ribbons">
-            <div class="label-row">
-              <label for="slider-stroke-width">Particle Size / Stroke Width</label>
-              <span class="val-badge" data-badge="strokeWidth">2.00</span>
-            </div>
-            <input type="range" id="slider-stroke-width" data-param="strokeWidth" min="0.5" max="12.0" step="0.1" value="2.0">
-          </div>
-
-          <div class="control-group" data-show-for-mode="flow,gpu_particles">
-            <label for="select-particle-shape-tab3">Particle Shape Profile</label>
-            <select id="select-particle-shape-tab3" class="glass-select" data-param="particleShape">
-              <option value="round" selected>Round Particles (Continuous Smooth / Round Caps)</option>
-              <option value="round_varied">Round Particles (Organic Varied Radiuses)</option>
-              <option value="flat">Flat / Ribbon Bands (Angular Brush)</option>
-            </select>
-          </div>
-
           <div class="control-group" data-show-for-mode="flow">
             <label class="checkbox-label">
               <input type="checkbox" id="check-taper" data-param="taperWidth" checked>
@@ -355,6 +419,9 @@
             </label>
           </div>
 
+          <div class="control-section-header">COMPOSITING & SHADERS</div>
+
+          <!-- Canvas Blend Mode (Single source of truth) -->
           <div class="control-group" data-show-for-mode="flow,ribbons,gpu_particles">
             <label for="select-blend-mode">Canvas Blend Mode</label>
             <select id="select-blend-mode" class="glass-select" data-param="blendMode">
@@ -368,22 +435,6 @@
             </select>
           </div>
 
-          <!-- Topographic controls -->
-          <div class="control-group" data-show-for-mode="topographic">
-            <div class="label-row">
-              <label for="slider-contours">Contour Elevation Levels</label>
-              <span class="val-badge" data-badge="contourLevels">24</span>
-            </div>
-            <input type="range" id="slider-contours" data-param="contourLevels" min="6" max="60" step="2" value="24">
-          </div>
-
-          <div class="control-group" data-show-for-mode="topographic">
-            <label class="checkbox-label">
-              <input type="checkbox" id="check-fill-bands" data-param="fillBands" checked>
-              <span>Elevation Gradient Shading</span>
-            </label>
-          </div>
-
           <!-- 3D Terrain controls -->
           <div class="control-group" data-show-for-mode="terrain3d">
             <label for="select-terrain-style">3D Render Style</label>
@@ -395,22 +446,7 @@
             </select>
           </div>
 
-          <div class="control-group" data-show-for-mode="terrain3d">
-            <div class="label-row">
-              <label for="slider-terrain-height">Mountain Peak Height</label>
-              <span class="val-badge" data-badge="heightMultiplier">220</span>
-            </div>
-            <input type="range" id="slider-terrain-height" data-param="heightMultiplier" min="50" max="500" step="10" value="220">
-          </div>
-
-          <div class="control-group" data-show-for-mode="terrain3d">
-            <label class="checkbox-label">
-              <input type="checkbox" id="check-ridged" data-param="ridgedPeaks">
-              <span>Ridged Multifractal Sharp Peaks</span>
-            </label>
-          </div>
-
-          <!-- Domain Warp Controls -->
+          <!-- Domain Warp Shading -->
           <div class="control-group" data-show-for-mode="domain_warp">
             <label class="checkbox-label">
               <input type="checkbox" id="check-specular" data-param="specularShading" checked>
@@ -419,10 +455,11 @@
           </div>
 
           <div class="control-group" data-show-for-mode="domain_warp">
-            <label class="checkbox-label">
-              <input type="checkbox" id="check-warp-mouse" data-param="enableMouseDistortion">
-              <span>Enable Mouse Cursor Distortion</span>
-            </label>
+            <div class="label-row">
+              <label for="slider-dw-light">Specular Gloss Intensity</label>
+              <span class="val-badge" data-badge="lightIntensity">1.30</span>
+            </div>
+            <input type="range" id="slider-dw-light" data-param="lightIntensity" min="0.2" max="3.0" step="0.1" value="1.3">
           </div>
 
           <div class="control-group" data-show-for-mode="domain_warp">
