@@ -87,9 +87,33 @@ animate(now) {
 - Ignores interactions originating inside HUD panels (`#hud`) or modals (`.modal`).
 - **Touch & Gesture Engine**:
   - **Single Finger Drag**: Updates active pointer for physics forces or painting particles (`spawnMode: 'pointer'`).
-  - **Double-Tap on Canvas**: Toggles Zen Mode (hides/reveals HUD) without needing a physical keyboard.
-  - **Two-Finger Tap**: Instantly toggles simulation Play/Pause.
-  - **Touch Brush Indicator**: Displays visual brush ring `#mouse-brush-cursor` directly under finger while dragging on touchscreens.
+  - **Double-Tap on Canvas**: Toggles Zen Mode (hides/reveals HUD) without needing a physical keyboard (disabled during pointer brush mode).
+  - **Two-Finger Tap (<350ms)**: Instantly toggles simulation Play/Pause.
+  - **Two-Finger Pinch**: Real-time zoom in and out across all generative modes without interrupting simulation loop.
+  - **Touch Brush Indicator**: Displays visual brush ring `#mouse-brush-cursor` directly under finger while dragging on touchscreens, scaled by `zoom`.
+
+---
+
+## Viewport Zoom & Coordinate Transformation Engine
+
+To eliminate edge discontinuities caused by initial boundary spawning or inspect fine fractal vortices, the studio features a real-time viewport zoom pipeline:
+
+1. **Hardware-Accelerated Scaling**:
+   - Scales `#canvas-container` via CSS `transform: scale(zoom)` with `transform-origin: center center` and `will-change: transform`.
+   - Clamped between `0.5x` (overview) and `5.0x` (deep magnification).
+   - Zero reallocation overhead: instant 60 FPS scaling for both WebGL2 (GPGPU particles, Domain Warp) and Canvas2D without clearing particle buffers or rebuilding textures.
+
+2. **Inverse Coordinate Mapping**:
+   When the canvas container is scaled by $Z$, screen coordinates $(s_x, s_y)$ relative to screen center $(c_x, c_y)$ map to canvas buffer coordinates $(p_x, p_y)$:
+   $$p_x = c_x + \frac{s_x - c_x}{Z}, \quad p_y = c_y + \frac{s_y - c_y}{Z}$$
+   - Applied inside `updatePointer()` so all generative physics forces, hover tracking, and particle brush painting spawn precisely underneath the user's cursor or finger.
+   - Brush cursor ring diameter scales by $D \times Z$ in screen space to perfectly match the painted area.
+
+3. **Input Modalities**:
+   - **Desktop Mouse Wheel**: Smooth exponential damping: $\text{factor} = e^{-\Delta y \cdot 0.0015}$. Ignored when scrolling over HUD drawers or modal dialogs.
+   - **Touch Pinch**: Tracks two-touch distance $\sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2}$ and applies the scale ratio directly to `initialPinchZoom`. Disambiguates cleanly from two-finger tap (Play/Pause).
+   - **Instant Reset**: Press <kbd>0</kbd> on desktop, click the top HUD `ZOOM` pill, click mobile drawer stats pill, or tap the floating badge `#floating-zoom-badge` to reset to `100%` (1.0x).
+   - **Zoom-Preserved Export**: Exporter captures the active zoomed region when rendering master images, keeping perimeter discontinuities cropped out.
 
 ---
 

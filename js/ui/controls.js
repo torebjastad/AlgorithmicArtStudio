@@ -47,7 +47,10 @@ class ControlsManager {
       exportProgressContainer: document.getElementById('export-progress-container'),
 
       btnRevealHUD: document.getElementById('btn-reveal-hud'),
-      hudToast: document.getElementById('hud-toast')
+      hudToast: document.getElementById('hud-toast'),
+      btnZoomReset: document.getElementById('btn-zoom-reset'),
+      btnZoomResetMobile: document.getElementById('btn-zoom-reset-mobile'),
+      floatingZoomBadge: document.getElementById('floating-zoom-badge')
     };
 
     // Mobile check to adjust default export resolution presentation
@@ -115,6 +118,17 @@ class ControlsManager {
     // Play / Pause Toggle
     if (this.ui.playPauseBtn) {
       this.ui.playPauseBtn.addEventListener('click', () => this.togglePlayPause());
+    }
+
+    // Zoom Level Reset (100%)
+    if (this.ui.btnZoomReset) {
+      this.ui.btnZoomReset.addEventListener('click', () => this.app.setZoom(1.0));
+    }
+    if (this.ui.btnZoomResetMobile) {
+      this.ui.btnZoomResetMobile.addEventListener('click', () => this.app.setZoom(1.0));
+    }
+    if (this.ui.floatingZoomBadge) {
+      this.ui.floatingZoomBadge.addEventListener('click', () => this.app.setZoom(1.0));
     }
 
     // Clear / Reset Canvas
@@ -253,6 +267,9 @@ class ControlsManager {
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
         this.app.exporter.exportImage({ width: 1920, height: 1080 });
+      } else if (e.key === '0') {
+        e.preventDefault();
+        this.app.setZoom(1.0);
       }
     });
   }

@@ -66,10 +66,24 @@ When `spawnMode` is set to `pointer`:
 | <kbd>P</kbd> | Toggle Particle Spawning | Pauses new particle emission; lets active particles fly out |
 | <kbd>C</kbd> | Clear Canvas | Re-seeds particles and clears the screen |
 | <kbd>R</kbd> | Randomize | Rolls calibrated random parameters and palette |
-| <kbd>H</kbd> | Toggle HUD | Hides/shows the HUD interface for clean fullscreen viewing |
-| <kbd>1</kbd>–<kbd>6</kbd> | Mode Switching | Instantly transitions between the 6 generative modes |
-| <kbd>E</kbd> | Instant Snapshot | Captures high-resolution canvas snapshot |
-| <kbd>S</kbd> | Export Modal | Opens modal with resolution options up to 8K & SVG |
+| <kbd>H</kbd> / <kbd>Tab</kbd> | Toggle HUD | Hides/shows the HUD interface for clean fullscreen viewing |
+| <kbd>F</kbd> | Toggle Fullscreen | Enters / exits browser fullscreen mode |
+| <kbd>S</kbd> | Instant Snapshot | Captures high-resolution canvas snapshot |
+| <kbd>0</kbd> | Reset Viewport Zoom | Restores canvas zoom level to 100% (1.0x) |
+| <kbd>Wheel</kbd> / <kbd>Pinch</kbd> | Viewport Zoom | Zooms in/out smoothly between 0.5x and 5.0x |
+
+---
+
+## 6. Viewport Zoom & Inspection Controls
+
+The studio provides real-time viewport zooming to hide edge discontinuities caused by initial boundary spawning or inspect fine fractal vortices:
+
+- **Desktop Mouse Wheel**: Rolling the mouse wheel over the canvas zooms in and out continuously with smooth exponential damping ($e^{-\Delta y \cdot 0.0015}$). Wheel events over HUD controls and modals are preserved for native scrolling.
+- **Mobile Pinch-to-Zoom**: Pinching two fingers expands or shrinks the viewport smoothly. Disambiguated cleanly from two-finger tap (Play/Pause).
+- **HUD Zoom Indicator (`#btn-zoom-reset`)**: Displays the active zoom percentage (`100%`, `125%`, etc.) in the top stats bar. Clicking resets zoom to `100%`.
+- **Mobile Drawer Indicator (`#btn-zoom-reset-mobile`)**: Compact pill in the drawer header with one-tap reset.
+- **Floating Badge (`#floating-zoom-badge`)**: Appears dynamically on screen when zooming (even in Zen Mode with HUD hidden) and fades away after 1.2s. Tapping it resets zoom to `100%`.
+- **Brush Alignment**: Mouse pointer brush cursor circle automatically resizes to reflect the magnified painting area, and inverse transforms guarantee particles spawn precisely under the cursor.
 
 ---
 

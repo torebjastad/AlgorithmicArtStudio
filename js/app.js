@@ -26,10 +26,16 @@ class AlgorithmicArtStudio {
     // Exporter
     this.exporter = new Exporter(this);
 
+    // Viewport Zoom State (0.5x to 5.0x)
+    this.zoom = 1.0;
+    this.zoomNotificationTimer = null;
+
     // Mouse & Touch Tracking
     this.mouse = {
       x: this.width / 2,
       y: this.height / 2,
+      screenX: this.width / 2,
+      screenY: this.height / 2,
       prevX: this.width / 2,
       prevY: this.height / 2,
       isDown: false,
@@ -104,6 +110,40 @@ class AlgorithmicArtStudio {
     }
   }
 
+  setZoom(zoomLevel) {
+    const clamped = Math.max(0.5, Math.min(5.0, zoomLevel));
+    this.zoom = Math.round(clamped * 100) / 100;
+
+    const container = document.getElementById('canvas-container');
+    if (container) {
+      container.style.transform = `scale(${this.zoom})`;
+    }
+
+    const percentText = `${Math.round(this.zoom * 100)}%`;
+    const valZoom = document.getElementById('val-zoom');
+    if (valZoom) valZoom.textContent = percentText;
+    const valZoomMobile = document.getElementById('val-zoom-mobile');
+    if (valZoomMobile) valZoomMobile.textContent = percentText;
+    const valZoomFloating = document.getElementById('val-zoom-floating');
+    if (valZoomFloating) valZoomFloating.textContent = percentText;
+
+    this.showZoomNotification();
+
+    if (this.updateBrushCursor) {
+      this.updateBrushCursor();
+    }
+  }
+
+  showZoomNotification() {
+    const badge = document.getElementById('floating-zoom-badge');
+    if (!badge) return;
+    badge.classList.add('active');
+    clearTimeout(this.zoomNotificationTimer);
+    this.zoomNotificationTimer = setTimeout(() => {
+      badge.classList.remove('active');
+    }, 1200);
+  }
+
   initEvents() {
     window.addEventListener('resize', () => {
       this.width = window.innerWidth;
@@ -113,12 +153,18 @@ class AlgorithmicArtStudio {
       this.resetCurrentMode();
     });
 
-    // Mouse & Touch Tracking
-    const updatePointer = (x, y) => {
+    // Mouse & Touch Tracking with Zoom Transformation
+    const updatePointer = (screenX, screenY) => {
       this.mouse.prevX = this.mouse.x;
       this.mouse.prevY = this.mouse.y;
-      this.mouse.x = x;
-      this.mouse.y = y;
+      this.mouse.screenX = screenX;
+      this.mouse.screenY = screenY;
+      const z = this.zoom || 1.0;
+      const cx = this.width / 2;
+      const cy = this.height / 2;
+      // Inverse zoom transformation from screen center
+      this.mouse.x = cx + (screenX - cx) / z;
+      this.mouse.y = cy + (screenY - cy) / z;
     };
 
     const brushCursor = document.getElementById('mouse-brush-cursor');
@@ -128,11 +174,14 @@ class AlgorithmicArtStudio {
       const isPointerMode = mode?.params?.spawnMode === 'pointer';
       if (isPointerMode && (this.mouse.isHovering || this.mouse.isDown)) {
         const diam = mode.params.mouseSpawnDiameter || 80;
+        const screenDiam = diam * (this.zoom || 1.0);
+        const sx = this.mouse.screenX !== undefined ? this.mouse.screenX : this.mouse.x;
+        const sy = this.mouse.screenY !== undefined ? this.mouse.screenY : this.mouse.y;
         brushCursor.style.display = 'block';
-        brushCursor.style.left = `${this.mouse.x}px`;
-        brushCursor.style.top = `${this.mouse.y}px`;
-        brushCursor.style.width = `${diam}px`;
-        brushCursor.style.height = `${diam}px`;
+        brushCursor.style.left = `${sx}px`;
+        brushCursor.style.top = `${sy}px`;
+        brushCursor.style.width = `${screenDiam}px`;
+        brushCursor.style.height = `${screenDiam}px`;
         brushCursor.style.borderColor = this.mouse.isDown ? 'rgba(0, 255, 180, 0.9)' : 'rgba(0, 240, 255, 0.75)';
         brushCursor.style.boxShadow = this.mouse.isDown ? '0 0 16px rgba(0, 255, 180, 0.5)' : '0 0 10px rgba(0, 240, 255, 0.25)';
       } else {
@@ -165,12 +214,25 @@ class AlgorithmicArtStudio {
       updateBrushCursor();
     });
 
-    // Touch Gestures: Multi-Touch, Double-Tap & Painting
+    // Mouse Wheel Zoom (Clamped 0.5x to 5.0x)
+    window.addEventListener('wheel', (e) => {
+      if (e.target.closest('#control-drawer') || e.target.closest('.modal-card') || e.target.closest('.top-bar') || e.target.closest('.modal')) {
+        return;
+      }
+      e.preventDefault();
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      this.setZoom(this.zoom * factor);
+    }, { passive: false });
+
+    // Touch Gestures: Multi-Touch, Pinch-to-Zoom, Double-Tap & Painting
     let lastTapTime = 0;
     let lastTapX = 0;
     let lastTapY = 0;
     let twoFingerStart = 0;
     let isTouchActiveOnCanvas = false;
+    let initialPinchDist = 0;
+    let initialPinchZoom = 1.0;
+    let isPinching = false;
 
     window.addEventListener('touchstart', (e) => {
       if (e.target.closest('#hud') || e.target.closest('.modal')) {
@@ -183,9 +245,15 @@ class AlgorithmicArtStudio {
         e.preventDefault(); // Prevents iOS magnifying glass, text callouts, and premature touchcancel
       }
 
-      // Two-finger tap detection (Play/Pause)
+      // Two-finger gesture start (Pinch-to-Zoom or Two-Finger Tap)
       if (e.touches.length === 2) {
         twoFingerStart = performance.now();
+        initialPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialPinchZoom = this.zoom;
+        isPinching = false;
         this.mouse.isDown = false;
         this.mouse.isHovering = false;
         updateBrushCursor();
@@ -225,10 +293,26 @@ class AlgorithmicArtStudio {
     window.addEventListener('touchmove', (e) => {
       if (!isTouchActiveOnCanvas) return;
       if (e.cancelable) {
-        e.preventDefault(); // Prevents mobile browser scrolling or gesture hijacking while painting
+        e.preventDefault(); // Prevents mobile browser scrolling or gesture hijacking while painting/zooming
       }
 
-      if (e.touches.length >= 1) {
+      // Pinch-to-zoom with 2 fingers
+      if (e.touches.length === 2 && initialPinchDist > 0) {
+        const currentDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (!isPinching && Math.abs(currentDist - initialPinchDist) > 10) {
+          isPinching = true;
+        }
+        if (isPinching) {
+          const ratio = currentDist / initialPinchDist;
+          this.setZoom(initialPinchZoom * ratio);
+        }
+        return;
+      }
+
+      if (e.touches.length === 1 && !isPinching) {
         const touch = e.touches[0];
         this.mouse.isDown = true;
         this.mouse.isHovering = true;
@@ -242,11 +326,14 @@ class AlgorithmicArtStudio {
         e.preventDefault();
       }
 
-      // Check if two-finger tap just completed (<350ms)
+      // Check if two-finger tap just completed (<350ms) without pinching
       if (twoFingerStart > 0 && e.touches.length === 0) {
         const duration = performance.now() - twoFingerStart;
+        const wasPinch = isPinching;
         twoFingerStart = 0;
-        if (duration < 350 && this.controls) {
+        initialPinchDist = 0;
+        isPinching = false;
+        if (!wasPinch && duration < 350 && this.controls) {
           this.controls.togglePlayPause();
           this.mouse.isDown = false;
           this.mouse.isHovering = false;
@@ -259,8 +346,18 @@ class AlgorithmicArtStudio {
         this.mouse.isDown = false;
         this.mouse.isHovering = false;
         isTouchActiveOnCanvas = false;
+        isPinching = false;
+        initialPinchDist = 0;
         updateBrushCursor();
       } else if (e.touches.length === 1) {
+        if (isPinching) {
+          isPinching = false;
+          initialPinchDist = 0;
+          this.mouse.isDown = false;
+          this.mouse.isHovering = false;
+          updateBrushCursor();
+          return;
+        }
         const touch = e.touches[0];
         this.mouse.isDown = true;
         this.mouse.isHovering = true;
@@ -274,6 +371,8 @@ class AlgorithmicArtStudio {
       this.mouse.isHovering = false;
       isTouchActiveOnCanvas = false;
       twoFingerStart = 0;
+      isPinching = false;
+      initialPinchDist = 0;
       updateBrushCursor();
     });
   }

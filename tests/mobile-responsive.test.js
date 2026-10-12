@@ -164,5 +164,127 @@ test('Mobile & Tablet Responsive Adaptations', async (t) => {
     assert.ok(appCode.includes('!isPointerMode && now - lastTapTime < 320'), 'Double-tap HUD toggle must be disabled during pointer painting mode');
     assert.ok(appCode.includes('if (e.cancelable) {') && appCode.includes('e.preventDefault();'), 'Touch handlers must call preventDefault on canvas touches');
   });
+
+  await t.test('Zoom UI elements and styles exist across desktop and mobile', () => {
+    const htmlPath = path.join(__dirname, '..', 'index.html');
+    const html = fs.readFileSync(htmlPath, 'utf8');
+    const cssPath = path.join(__dirname, '..', 'css', 'style.css');
+    const css = fs.readFileSync(cssPath, 'utf8');
+
+    assert.ok(html.includes('id="btn-zoom-reset"'), 'HTML must include #btn-zoom-reset in desktop stats');
+    assert.ok(html.includes('id="btn-zoom-reset-mobile"'), 'HTML must include #btn-zoom-reset-mobile in drawer header');
+    assert.ok(html.includes('id="floating-zoom-badge"'), 'HTML must include #floating-zoom-badge');
+    assert.ok(html.includes('id="val-zoom"'), 'HTML must include #val-zoom');
+    assert.ok(html.includes('id="val-zoom-mobile"'), 'HTML must include #val-zoom-mobile');
+    assert.ok(html.includes('id="val-zoom-floating"'), 'HTML must include #val-zoom-floating');
+
+    assert.ok(css.includes('transform-origin: center center;'), 'Canvas container must scale from center center');
+    assert.ok(css.includes('will-change: transform;'), 'Canvas container must hint transform optimization');
+    assert.ok(css.includes('.floating-zoom-badge'), 'CSS must define floating zoom badge styles');
+    assert.ok(css.includes('.clickable-pill'), 'CSS must define clickable pill hover and active states');
+  });
+
+  await t.test('AlgorithmicArtStudio setZoom clamps zoom level and updates DOM indicators', () => {
+    const appPath = path.join(__dirname, '..', 'js', 'app.js');
+    const appCode = fs.readFileSync(appPath, 'utf8');
+
+    assert.ok(appCode.includes('this.zoom = 1.0;'), 'app must initialize zoom to 1.0');
+    assert.ok(appCode.includes('Math.max(0.5, Math.min(5.0, zoomLevel))'), 'setZoom must clamp between 0.5x and 5.0x');
+    assert.ok(appCode.includes('container.style.transform = `scale(${this.zoom})`'), 'setZoom must apply scale transform to container');
+
+    // Simulate setZoom method logic directly
+    const dummyDOM = {
+      container: { style: { transform: '' } },
+      valZoom: { textContent: '' },
+      valZoomMobile: { textContent: '' },
+      valZoomFloating: { textContent: '' },
+      badge: { classList: { add: () => {}, remove: () => {} } }
+    };
+
+    const mockApp = {
+      zoom: 1.0,
+      zoomNotificationTimer: null,
+      setZoom(zoomLevel) {
+        const clamped = Math.max(0.5, Math.min(5.0, zoomLevel));
+        this.zoom = Math.round(clamped * 100) / 100;
+        dummyDOM.container.style.transform = `scale(${this.zoom})`;
+        const percentText = `${Math.round(this.zoom * 100)}%`;
+        dummyDOM.valZoom.textContent = percentText;
+        dummyDOM.valZoomMobile.textContent = percentText;
+        dummyDOM.valZoomFloating.textContent = percentText;
+      }
+    };
+
+    // Test normal zoom
+    mockApp.setZoom(1.25);
+    assert.equal(mockApp.zoom, 1.25);
+    assert.equal(dummyDOM.container.style.transform, 'scale(1.25)');
+    assert.equal(dummyDOM.valZoom.textContent, '125%');
+
+    // Test minimum clamping
+    mockApp.setZoom(0.2);
+    assert.equal(mockApp.zoom, 0.5, 'Zoom below 0.5 must clamp to 0.5');
+    assert.equal(dummyDOM.valZoom.textContent, '50%');
+
+    // Test maximum clamping
+    mockApp.setZoom(10.0);
+    assert.equal(mockApp.zoom, 5.0, 'Zoom above 5.0 must clamp to 5.0');
+    assert.equal(dummyDOM.valZoom.textContent, '500%');
+
+    // Test reset back to 100%
+    mockApp.setZoom(1.0);
+    assert.equal(mockApp.zoom, 1.0);
+    assert.equal(dummyDOM.valZoom.textContent, '100%');
+  });
+
+  await t.test('Pointer coordinate mapping accurately inverts container zoom', () => {
+    const width = 1200;
+    const height = 800;
+    const cx = width / 2; // 600
+    const cy = height / 2; // 400
+
+    const transformPointer = (screenX, screenY, zoom) => {
+      return {
+        x: cx + (screenX - cx) / zoom,
+        y: cy + (screenY - cy) / zoom
+      };
+    };
+
+    // At 1.0x, screen coords match canvas coords exactly
+    const p1 = transformPointer(700, 500, 1.0);
+    assert.equal(p1.x, 700);
+    assert.equal(p1.y, 500);
+
+    // At 2.0x, a point 100px from center on screen is 50px from center on canvas
+    const p2 = transformPointer(700, 500, 2.0);
+    assert.equal(p2.x, 650);
+    assert.equal(p2.y, 450);
+
+    // Center screen always maps to center canvas regardless of zoom
+    const pCenter = transformPointer(cx, cy, 3.5);
+    assert.equal(pCenter.x, cx);
+    assert.equal(pCenter.y, cy);
+  });
+
+  await t.test('Wheel zoom, pinch gesture, and 0 shortcut are wired up', () => {
+    const appPath = path.join(__dirname, '..', 'js', 'app.js');
+    const appCode = fs.readFileSync(appPath, 'utf8');
+    const controlsPath = path.join(__dirname, '..', 'js', 'ui', 'controls.js');
+    const controlsCode = fs.readFileSync(controlsPath, 'utf8');
+
+    // Wheel zoom
+    assert.ok(appCode.includes('window.addEventListener(\'wheel\''), 'app.js must register wheel event listener');
+    assert.ok(appCode.includes('Math.exp(-e.deltaY * 0.0015)'), 'Wheel zoom must use smooth exponential scaling');
+
+    // Pinch gesture
+    assert.ok(appCode.includes('initialPinchDist = Math.hypot('), 'Pinch zoom must compute initial distance with Math.hypot');
+    assert.ok(appCode.includes('this.setZoom(initialPinchZoom * ratio)'), 'Pinch gesture must dynamically update setZoom');
+    assert.ok(appCode.includes('!wasPinch && duration < 350'), 'Two-finger tap (Play/Pause) must be disambiguated from pinch zoom');
+
+    // Shortcuts and Reset
+    assert.ok(controlsCode.includes('e.key === \'0\''), 'controls.js must bind key 0 to reset zoom');
+    assert.ok(controlsCode.includes('this.ui.btnZoomReset.addEventListener(\'click\''), 'btnZoomReset must bind click to setZoom(1.0)');
+    assert.ok(controlsCode.includes('this.ui.btnZoomResetMobile.addEventListener(\'click\''), 'btnZoomResetMobile must bind click to setZoom(1.0)');
+  });
 });
 

@@ -40,6 +40,9 @@
         <div class="stats-group">
           <span class="stat-pill"><span class="stat-label">FPS</span> <span id="val-fps" class="stat-num">60</span></span>
           <span class="stat-pill"><span class="stat-label">PARTICLES</span> <span id="val-particle-count" class="stat-num">8,000</span></span>
+          <button class="stat-pill clickable-pill" id="btn-zoom-reset" title="Zoom Level (Click or press '0' to reset to 100%)" aria-label="Reset Zoom">
+            <span class="stat-label">ZOOM</span> <span id="val-zoom" class="stat-num">100%</span>
+          </button>
         </div>
 
         <button class="btn-icon" id="btn-play-pause" title="Play / Pause (Space)" aria-label="Play/Pause">
@@ -85,6 +88,7 @@
           <div class="drawer-stats-mobile" id="drawer-stats-mobile">
             <span class="stat-pill-mini"><span id="val-fps-mobile">60</span> FPS</span>
             <span class="stat-pill-mini"><span id="val-particles-mobile">8K</span></span>
+            <button class="stat-pill-mini clickable-pill" id="btn-zoom-reset-mobile" title="Reset Zoom to 100%"><span id="val-zoom-mobile">100%</span></button>
           </div>
         </div>
         <span class="shortcut-tip">Press <strong>H</strong> to hide HUD</span>
@@ -506,6 +510,12 @@
     <span>UI Hidden &bull; Press <kbd>H</kbd> or <kbd>Tab</kbd> to restore</span>
   </div>
 
+  <!-- Floating Zoom Notification Badge -->
+  <div id="floating-zoom-badge" class="floating-zoom-badge" title="Click to reset zoom (100%)" aria-label="Current Zoom">
+    <span class="zoom-badge-icon">🔍</span>
+    <span id="val-zoom-floating">100%</span>
+  </div>
+
   <!-- High-Res Export Modal -->
   <div class="modal" id="modal-export">
     <div class="modal-backdrop btn-close-modal"></div>
@@ -634,6 +644,8 @@
               <li><kbd>R</kbd> Smart Randomize parameters & palette</li>
               <li><kbd>C</kbd> Clear canvas trails / re-seed</li>
               <li><kbd>S</kbd> Instant 1080p snapshot</li>
+              <li><kbd>Wheel</kbd> / <kbd>Pinch</kbd> Zoom Canvas in & out (0.5x – 5.0x)</li>
+              <li><kbd>0</kbd> Reset Zoom to 100%</li>
             </ul>
           </div>
         </article>
