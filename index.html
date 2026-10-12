@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Algorithmic Art Studio | Generative Art & Mathematical Physics</title>
   <meta name="description" content="Lightning-fast GPU & Vector generative art studio powered by Curl noise, Simplex noise, Perlin noise, Domain Warping, and 4K/8K export.">
   
@@ -72,11 +72,23 @@
       </div>
     </header>
 
-    <!-- Collapsible Control Drawer -->
+    <!-- Collapsible Control Drawer / Mobile Bottom Sheet -->
     <aside class="glass-drawer" id="control-drawer">
+      <!-- Mobile Bottom Sheet Grab Handle -->
+      <div class="sheet-grab-bar" id="sheet-grab-bar" aria-label="Drag or tap to collapse sheet">
+        <div class="sheet-grab-handle"></div>
+      </div>
+
       <div class="drawer-header">
-        <h3>Studio Controls</h3>
+        <div class="drawer-header-title">
+          <h3>Studio Controls</h3>
+          <div class="drawer-stats-mobile" id="drawer-stats-mobile">
+            <span class="stat-pill-mini"><span id="val-fps-mobile">60</span> FPS</span>
+            <span class="stat-pill-mini"><span id="val-particles-mobile">8K</span></span>
+          </div>
+        </div>
         <span class="shortcut-tip">Press <strong>H</strong> to hide HUD</span>
+        <button class="btn-icon drawer-close-btn" id="btn-close-drawer" aria-label="Close Controls" title="Close Controls">&times;</button>
       </div>
 
       <!-- Control Tabs -->

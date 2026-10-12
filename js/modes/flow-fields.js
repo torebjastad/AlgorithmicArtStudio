@@ -9,9 +9,11 @@ class FlowFieldMode {
     this.app = app;
     this.name = 'Flow Fields';
     
+    const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth <= 768));
+
     // Core parameters with responsive defaults
     this.params = {
-      particleCount: 8000,
+      particleCount: isMobile ? 4000 : 8000,
       noiseType: 'curl',     // 'curl', 'perlin', 'simplex', 'vortex'
       noiseScale: 0.003,
       octaves: 3,

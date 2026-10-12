@@ -30,12 +30,19 @@ class WebGLRenderer {
     this.programs = new Map();
     this.currentProgram = null;
 
-    this.dpr = window.devicePixelRatio || 1;
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    this.dpr = WebGLRenderer.getSafeDPR();
+    this.width = typeof window !== 'undefined' ? window.innerWidth : 800;
+    this.height = typeof window !== 'undefined' ? window.innerHeight : 600;
 
     this.initQuadBuffer();
     this.resize(this.width, this.height, this.dpr);
+  }
+
+  static getSafeDPR(customDpr = null) {
+    const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth <= 768));
+    const maxDpr = isMobile ? 1.5 : 2.0;
+    const base = customDpr !== null ? customDpr : (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+    return Math.min(base, maxDpr);
   }
 
   initQuadBuffer() {
@@ -64,11 +71,11 @@ class WebGLRenderer {
     }
   }
 
-  resize(width, height, dpr = (window.devicePixelRatio || 1)) {
+  resize(width, height, dpr = null) {
     if (!this.supported) return;
     this.width = width;
     this.height = height;
-    this.dpr = dpr;
+    this.dpr = WebGLRenderer.getSafeDPR(dpr);
 
     const displayWidth = Math.max(1, Math.floor(width * this.dpr));
     const displayHeight = Math.max(1, Math.floor(height * this.dpr));

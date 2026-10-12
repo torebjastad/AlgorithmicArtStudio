@@ -10,8 +10,10 @@ class GPUParticlesMode {
     this.app = app;
     this.name = '⚡ GPU Cosmic Particles (1M+)';
 
+    const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth <= 768));
+
     this.params = {
-      particleCount: 262144, // 512x512 = 262,144 particles (up to 1024x1024 = 1,048,576)
+      particleCount: isMobile ? 65536 : 262144, // 256x256 = 65,536 on mobile for 60 FPS; 512x512 = 262,144 on desktop
       noiseType: 'curl',     // 'curl', 'perlin', 'simplex', 'vortex'
       noiseScale: 0.0006,    // Ultra-wide cosmic flow scale
       octaves: 3,

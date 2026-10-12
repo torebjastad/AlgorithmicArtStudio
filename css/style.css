@@ -21,6 +21,10 @@
   --font-mono: 'JetBrains Mono', monospace;
   --transition-fast: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -49,6 +53,8 @@ body, html {
   width: 100%;
   height: 100%;
   z-index: 1;
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 
 canvas {
@@ -58,6 +64,8 @@ canvas {
   width: 100%;
   height: 100%;
   display: block;
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 
 #canvas-gl {
@@ -309,18 +317,71 @@ canvas {
   pointer-events: none;
 }
 
+.sheet-grab-bar {
+  display: none;
+  width: 100%;
+  padding: 10px 0 4px;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+}
+
+.sheet-grab-handle {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: all var(--transition-fast);
+}
+
+.sheet-grab-bar:active .sheet-grab-handle {
+  background: var(--accent-cyan);
+  transform: scaleX(1.15);
+}
+
 .drawer-header {
-  padding: 16px 20px 10px;
+  padding: 14px 20px 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--panel-border);
 }
 
+.drawer-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .drawer-header h3 {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.5px;
+}
+
+.drawer-stats-mobile {
+  display: none;
+  gap: 6px;
+}
+
+.stat-pill-mini {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.drawer-close-btn {
+  display: none;
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  line-height: 1;
 }
 
 .shortcut-tip {
@@ -758,15 +819,106 @@ kbd {
   color: var(--accent-cyan);
 }
 
-/* Mobile Responsive */
-@media (max-width: 768px) {
+/* ==========================================================================
+   Responsive Adaptations: Mobile Phones, Tablets & Touch Devices
+   ========================================================================== */
+
+/* 1. Touch-First Ergonomics (Pointer: Coarse / Touchscreens) */
+@media (pointer: coarse) {
+  input[type="range"] {
+    height: 36px;
+    margin: 4px 0;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+    margin-top: -9px;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.55);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .tab-btn {
+    padding: 12px 6px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  .btn-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+  }
+
+  .glass-select {
+    padding: 12px 14px;
+    font-size: 13.5px;
+    min-height: 44px;
+  }
+
+  .checkbox-label {
+    padding: 8px 0;
+    font-size: 13.5px;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .palette-swatch {
+    min-height: 42px;
+  }
+}
+
+/* 2. Tablets (iPad, Galaxy Tab: 769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
   :root {
-    --drawer-width: calc(100vw - 32px);
+    --drawer-width: 340px;
   }
 
   .top-bar {
+    left: max(14px, var(--safe-left));
+    right: max(14px, var(--safe-right));
+    top: max(12px, var(--safe-top));
+    padding: 0 14px;
+  }
+
+  .glass-drawer {
+    top: calc(max(12px, var(--safe-top)) + 68px);
+    right: max(14px, var(--safe-right));
+    bottom: max(14px, var(--safe-bottom));
+  }
+
+  .brand-title {
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+}
+
+/* 3. Mobile Phones (Screen width <= 768px, Portrait & General) */
+@media (max-width: 768px) {
+  :root {
+    --drawer-width: 100vw;
+  }
+
+  /* Top Action Bar Mobile */
+  .top-bar {
+    top: max(10px, var(--safe-top));
+    left: max(10px, var(--safe-left));
+    right: max(10px, var(--safe-right));
     height: 52px;
-    padding: 0 12px;
+    padding: 0 10px;
+    gap: 6px;
+    border-radius: var(--radius-md);
+  }
+
+  .brand {
+    gap: 6px;
   }
 
   .brand-title {
@@ -777,14 +929,175 @@ kbd {
     display: none;
   }
 
+  #btn-fullscreen, #btn-open-info {
+    display: none; /* Secondary desktop items hidden to keep header clean */
+  }
+
+  .hud-actions {
+    gap: 6px;
+  }
+
+  .btn-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 15px;
+  }
+
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Bottom Sheet Architecture on Mobile */
   .glass-drawer {
-    top: 74px;
-    right: 16px;
-    left: 16px;
-    width: auto;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 80vh;
+    height: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    padding-bottom: max(12px, var(--safe-bottom));
+    transform: translateY(0);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.75);
+    transition: transform var(--transition-smooth), opacity var(--transition-smooth);
+  }
+
+  .glass-drawer.collapsed {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sheet-grab-bar {
+    display: flex;
+  }
+
+  .drawer-close-btn {
+    display: flex;
+  }
+
+  .drawer-stats-mobile {
+    display: flex;
+  }
+
+  .shortcut-tip {
+    display: none;
+  }
+
+  .tab-nav {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-btn {
+    flex: 1 0 auto;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .tab-content {
+    max-height: calc(80vh - 120px);
+    padding: 14px 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Reveal HUD Button */
+  #btn-reveal-hud {
+    bottom: max(20px, var(--safe-bottom));
+    right: max(20px, var(--safe-right));
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  /* Modals */
+  .modal {
+    padding: max(12px, var(--safe-top)) max(12px, var(--safe-left));
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-height: 86vh;
+    border-radius: var(--radius-lg);
+    padding: 18px 16px;
+    margin-bottom: max(10px, var(--safe-bottom));
+  }
+
+  .modal-btn-row {
+    flex-direction: column;
+    gap: 8px;
   }
 
   .shortcut-cheatsheet ul {
     grid-template-columns: 1fr;
   }
+
+  .math-guide {
+    font-size: 12.5px;
+  }
+
+  .math-equation {
+    font-size: 12px;
+    padding: 8px 10px;
+    overflow-x: auto;
+  }
 }
+
+/* 4. Mobile Landscape Mode (Phone rotated horizontally: max-height <= 520px) */
+@media (max-height: 520px) and (orientation: landscape) {
+  .top-bar {
+    top: max(6px, var(--safe-top));
+    left: max(8px, var(--safe-left));
+    right: max(8px, var(--safe-right));
+    height: 44px;
+    padding: 0 10px;
+  }
+
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+
+  /* Slide-in right panel instead of bottom sheet to preserve horizontal canvas view */
+  .glass-drawer {
+    top: max(6px, var(--safe-top));
+    bottom: max(6px, var(--safe-bottom));
+    right: max(8px, var(--safe-right));
+    left: auto;
+    width: min(310px, 85vw);
+    max-height: none;
+    height: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--panel-border);
+    transform: translateX(0);
+    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.6);
+  }
+
+  .glass-drawer.collapsed {
+    transform: translateX(calc(100% + 20px));
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sheet-grab-bar {
+    display: none;
+  }
+
+  .tab-content {
+    max-height: calc(100vh - 120px);
+    padding: 10px 14px;
+  }
+}
+

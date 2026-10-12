@@ -165,27 +165,95 @@ class AlgorithmicArtStudio {
       updateBrushCursor();
     });
 
-    // Touch events
+    // Touch Gestures: Multi-Touch, Double-Tap & Painting
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+    let twoFingerStart = 0;
+    let isTouchActiveOnCanvas = false;
+
     window.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 0) {
-        if (e.touches[0].target.closest('#hud') || e.touches[0].target.closest('.modal')) return;
+      if (e.target.closest('#hud') || e.target.closest('.modal')) {
+        isTouchActiveOnCanvas = false;
+        return;
+      }
+
+      isTouchActiveOnCanvas = true;
+
+      // Two-finger tap detection (Play/Pause)
+      if (e.touches.length === 2) {
+        twoFingerStart = performance.now();
+        this.mouse.isDown = false;
+        this.mouse.isHovering = false;
+        updateBrushCursor();
+        return;
+      }
+
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const now = performance.now();
+        const dist = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
+
+        // Double-tap on canvas (<320ms and within 35px) toggles Zen Mode (HUD visibility)
+        if (now - lastTapTime < 320 && dist < 35) {
+          if (this.controls) {
+            this.controls.toggleHUD();
+          }
+          lastTapTime = 0;
+          this.mouse.isDown = false;
+          this.mouse.isHovering = false;
+          updateBrushCursor();
+          return;
+        }
+
+        lastTapTime = now;
+        lastTapX = touch.clientX;
+        lastTapY = touch.clientY;
+
         this.mouse.isDown = true;
         this.mouse.isHovering = true;
-        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
-        updateBrushCursor();
-      }
-    }, { passive: false });
-
-    window.addEventListener('touchmove', (e) => {
-      if (e.touches.length > 0) {
-        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+        updatePointer(touch.clientX, touch.clientY);
         updateBrushCursor();
       }
     }, { passive: true });
 
-    window.addEventListener('touchend', () => {
+    window.addEventListener('touchmove', (e) => {
+      if (!isTouchActiveOnCanvas) return;
+
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        updatePointer(touch.clientX, touch.clientY);
+        updateBrushCursor();
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      // Check if two-finger tap just completed (<350ms)
+      if (twoFingerStart > 0 && e.touches.length === 0) {
+        const duration = performance.now() - twoFingerStart;
+        twoFingerStart = 0;
+        if (duration < 350 && this.controls) {
+          this.controls.togglePlayPause();
+          this.mouse.isDown = false;
+          this.mouse.isHovering = false;
+          updateBrushCursor();
+          return;
+        }
+      }
+
+      if (e.touches.length === 0) {
+        this.mouse.isDown = false;
+        this.mouse.isHovering = false;
+        isTouchActiveOnCanvas = false;
+        updateBrushCursor();
+      }
+    });
+
+    window.addEventListener('touchcancel', () => {
       this.mouse.isDown = false;
       this.mouse.isHovering = false;
+      isTouchActiveOnCanvas = false;
+      twoFingerStart = 0;
       updateBrushCursor();
     });
   }
@@ -206,18 +274,21 @@ class AlgorithmicArtStudio {
       this.frameCount = 0;
       this.fpsTimer = now;
 
-      if (this.controls && this.controls.ui.fpsCounter) {
-        this.controls.ui.fpsCounter.textContent = this.fps;
+      if (this.controls) {
+        if (this.controls.ui.fpsCounter) this.controls.ui.fpsCounter.textContent = this.fps;
+        if (this.controls.ui.fpsCounterMobile) this.controls.ui.fpsCounterMobile.textContent = this.fps;
       }
     }
 
     // Update Particle count stats
-    if (this.controls && this.controls.ui.particleCounter) {
-      if (this.currentModeKey === 'flow' || this.currentModeKey === 'gpu_particles') {
-        this.controls.ui.particleCounter.textContent = (this.currentMode.params.particleCount || 0).toLocaleString();
-      } else {
-        this.controls.ui.particleCounter.textContent = 'N/A';
-      }
+    if (this.controls) {
+      const isParticleMode = this.currentModeKey === 'flow' || this.currentModeKey === 'gpu_particles';
+      const count = isParticleMode ? (this.currentMode?.params?.particleCount || 0) : 0;
+      const formatted = isParticleMode ? count.toLocaleString() : 'N/A';
+      const formattedMobile = isParticleMode ? (count >= 1000 ? `${Math.round(count / 1000)}K` : count) : 'N/A';
+
+      if (this.controls.ui.particleCounter) this.controls.ui.particleCounter.textContent = formatted;
+      if (this.controls.ui.particleCounterMobile) this.controls.ui.particleCounterMobile.textContent = formattedMobile;
     }
 
     // Update & Render Current Mode

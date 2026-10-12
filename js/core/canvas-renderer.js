@@ -12,9 +12,9 @@ class CanvasRenderer {
     this.trailCanvas = document.createElement('canvas');
     this.trailCtx = this.trailCanvas.getContext('2d', { alpha: true });
 
-    this.dpr = window.devicePixelRatio || 1;
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    this.dpr = CanvasRenderer.getSafeDPR();
+    this.width = typeof window !== 'undefined' ? window.innerWidth : 800;
+    this.height = typeof window !== 'undefined' ? window.innerHeight : 600;
 
     this.blendMode = 'source-over';
     this.fadeAlpha = 0.05;
@@ -23,10 +23,17 @@ class CanvasRenderer {
     this.resize(this.width, this.height);
   }
 
-  resize(width, height, dpr = (window.devicePixelRatio || 1)) {
+  static getSafeDPR(customDpr = null) {
+    const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth <= 768));
+    const maxDpr = isMobile ? 1.5 : 2.0;
+    const base = customDpr !== null ? customDpr : (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
+    return Math.min(base, maxDpr);
+  }
+
+  resize(width, height, dpr = null) {
     this.width = width;
     this.height = height;
-    this.dpr = dpr;
+    this.dpr = CanvasRenderer.getSafeDPR(dpr);
 
     const displayWidth = Math.floor(width * this.dpr);
     const displayHeight = Math.floor(height * this.dpr);

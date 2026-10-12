@@ -26,7 +26,8 @@ Both WebGL2 and Canvas2D support seven artistic blend modes (`blendMode`):
 The export modal (<kbd>S</kbd> or Export button in HUD) supports multiple output formats:
 
 ### Raster Image Export (PNG / JPEG)
-- **Selectable Multipliers**: $1\times$ (Viewport), $2\times$ (High-DPI 4K), and $4\times$ (Ultra-HD 8K).
+- **Selectable Resolutions**: 1080p Full HD, 2K QHD, 4K UHD, Square Master (4096×4096), Current Screen, and 8K Ultra HD.
+- **Mobile Memory Protection**: On mobile browsers, 8K canvas allocations (~132MB buffer) trigger uncatchable WebKit tab crashes. The exporter automatically safeguards mobile devices by capping export resolution at 4K UHD while preserving the original aspect ratio.
 - **Offscreen Super-Resolution**:
   - Allocates an offscreen render target scaled to the requested resolution.
   - Re-executes the mode's render routine with scaled line widths and dimension coordinates.
@@ -37,6 +38,17 @@ The export modal (<kbd>S</kbd> or Export button in HUD) supports multiple output
 - Transcribes active path segments into native SVG `<path d="...">` elements with embedded stroke styling.
 - Produces infinitely scalable vector artwork suitable for pen plotters, printing, and laser cutting.
 
-### Video Animation Capture (WebM)
+### Video Animation Capture (WebM & MP4)
 - Streams canvas frame buffers into the browser's `MediaRecorder` API.
-- Encodes real-time WebM video clips (up to 60 FPS) with user-selected recording durations.
+- **Cross-Platform Codec Selection**:
+  - Probes browser MIME support: selects `video/mp4;codecs=avc1` or `video/mp4` on iOS Safari, and `video/webm;codecs=vp9/vp8` on Chrome, Firefox, and Android.
+  - Outputs properly formatted `.mp4` or `.webm` files with user-selected recording durations.
+
+---
+
+## 3. High-DPI & Mobile Hardware Tiering
+
+- **DPR Clamping (`getSafeDPR()`)**: High-density smartphone displays often report `devicePixelRatio` of 3.0 or 3.5. Rendering 1,000,000 transparent anti-aliased ribbon quads across 10 megapixels tanks GPU fill rate.
+- `CanvasRenderer` and `WebGLRenderer` clamp DPR to **1.5× on mobile screens** and **2.0× on desktop screens**. This eliminates thermal throttling and maintains 60+ FPS while remaining razor-sharp.
+- **Particle Tiering**: Mobile devices automatically default to 65,536 GPU particles (or 4,000 CPU particles), while desktop retains 262,144 / 8,000 defaults with full slider access up to 1,048,576.
+

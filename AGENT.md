@@ -46,8 +46,13 @@ Before making modifications, review the relevant knowledge documents in `doc/`:
 - Always sync `<span class="val-badge">` badges with appropriate precision formatting via `ControlsManager.formatBadge()`.
 - Use `data-show-for-mode` and `data-show-for-spawn-mode` for dynamic, clutter-free HUD presentation.
 
-### 4. Automated Testing Standard
-- **Implement Tests Whenever Sensible**: Automated tests in `tests/*.test.js` must be implemented whenever it is sensible to do so (e.g., when adding new generative modes or parameters, changing control logic or formatting, modifying mathematical equations, or fixing bugs).
+### 4. Mobile & Tablet Responsiveness
+- **Adaptive Form Factors**: Mobile phones (< 768px portrait) use a draggable bottom sheet architecture with a grab handle; mobile landscape (< 520px height) uses a right slide-over panel.
+- **Touch Ergonomics & Gestures**: Touch targets must be at least `44px × 44px` (`@media (pointer: coarse)`). Desktop keyboard shortcuts must have touch equivalents (double-tap for Zen Mode, two-finger tap for Play/Pause, touch drag for painting).
+- **Hardware & Fill-rate Protection**: Mobile displays often report 3.0+ DPR. Clamp DPR to 1.5x on mobile screens to prevent GPU thermal throttling. Cap mobile export resolution to 4K UHD to avoid WebKit out-of-memory crashes.
+
+### 5. Automated Testing Standard
+- **Implement Tests Whenever Sensible**: Automated tests in `tests/*.test.js` must be implemented whenever it is sensible to do so (e.g., when adding new generative modes or parameters, changing control logic or formatting, modifying mathematical equations, adding responsive adaptations, or fixing bugs).
 - **Zero-Dependency Native Runner**: The test suite uses Node's native test runner (`node:test` and `node:assert/strict`) paired with lightweight DOM/WebGL mocks, strictly maintaining the project's zero external runtime/dev dependency ethos.
 - **Run Tests**: Execute `npm test` or `node --test tests/*.test.js` to run all tests.
 

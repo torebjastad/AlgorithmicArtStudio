@@ -15,13 +15,26 @@ class Exporter {
    * Export high-resolution image
    */
   async exportImage(options = {}) {
-    const {
+    let {
       width = 3840,
       height = 2160,
       format = 'image/png',
       quality = 0.95,
       filename = `algorithmic_art_${Date.now()}`
     } = options;
+
+    // Mobile resolution safeguard: prevent browser tab memory exhaustion
+    const isMobile = typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth <= 768));
+    if (isMobile && (width > 4096 || height > 4096)) {
+      const aspect = width / height;
+      if (width >= height) {
+        width = 3840;
+        height = Math.round(3840 / aspect);
+      } else {
+        height = 3840;
+        width = Math.round(3840 * aspect);
+      }
+    }
 
     // Create offscreen canvas for high-res render
     const offCanvas = document.createElement('canvas');
@@ -66,25 +79,56 @@ class Exporter {
   }
 
   /**
-   * Record WebM Animation Loop
+   * Query supported recording MIME types across desktop and mobile (iOS Safari mp4 vs Chrome webm)
+   */
+  getSupportedVideoMimeType() {
+    if (typeof MediaRecorder === 'undefined') return { mime: 'video/webm', ext: 'webm' };
+    const isSupported = (t) => {
+      try {
+        return typeof MediaRecorder.isTypeSupported === 'function' ? MediaRecorder.isTypeSupported(t) : false;
+      } catch (err) {
+        return false;
+      }
+    };
+
+    const candidates = [
+      { mime: 'video/mp4;codecs=avc1', ext: 'mp4' },
+      { mime: 'video/mp4', ext: 'mp4' },
+      { mime: 'video/webm;codecs=vp9', ext: 'webm' },
+      { mime: 'video/webm;codecs=vp8', ext: 'webm' },
+      { mime: 'video/webm', ext: 'webm' }
+    ];
+
+    return candidates.find(c => isSupported(c.mime)) || { mime: 'video/webm', ext: 'webm' };
+  }
+
+  /**
+   * Record Animation Loop (Supports WebM on Desktop/Android and MP4 on iOS Safari)
    */
   startRecording(durationSeconds = 5, fps = 60, onProgress = null, onComplete = null) {
     if (this.isRecording) return;
 
     const stream = this.app.activeCanvas.captureStream(fps);
-    const mimeTypes = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm'
-    ];
+    const targetType = this.getSupportedVideoMimeType();
+    let selectedMime = targetType.mime;
+    let selectedExt = targetType.ext;
 
-    let selectedMime = mimeTypes.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
-    
     this.recordedChunks = [];
-    this.mediaRecorder = new MediaRecorder(stream, {
-      mimeType: selectedMime,
-      videoBitsPerSecond: 12000000 // 12 Mbps for crisp video
-    });
+    const options = { videoBitsPerSecond: 12000000 };
+    if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(selectedMime)) {
+      options.mimeType = selectedMime;
+    }
+
+    try {
+      this.mediaRecorder = new MediaRecorder(stream, options);
+    } catch (e) {
+      console.warn('Fallback to default MediaRecorder options:', e);
+      this.mediaRecorder = new MediaRecorder(stream);
+      if (this.mediaRecorder.mimeType) {
+        selectedMime = this.mediaRecorder.mimeType;
+        selectedExt = selectedMime.includes('mp4') ? 'mp4' : 'webm';
+      }
+    }
 
     this.mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
@@ -95,7 +139,7 @@ class Exporter {
     this.mediaRecorder.onstop = () => {
       const blob = new Blob(this.recordedChunks, { type: selectedMime });
       const url = URL.createObjectURL(blob);
-      this.downloadDataUrl(url, `algorithmic_animation_${Date.now()}.webm`);
+      this.downloadDataUrl(url, `algorithmic_animation_${Date.now()}.${selectedExt}`);
       this.isRecording = false;
       if (onComplete) onComplete();
     };

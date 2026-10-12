@@ -29,8 +29,12 @@ class ControlsManager {
       paletteGrid: document.getElementById('palette-grid'),
       
       fpsCounter: document.getElementById('val-fps'),
+      fpsCounterMobile: document.getElementById('val-fps-mobile'),
       particleCounter: document.getElementById('val-particle-count'),
+      particleCounterMobile: document.getElementById('val-particles-mobile'),
       modeBadge: document.getElementById('val-mode-badge'),
+      sheetGrabBar: document.getElementById('sheet-grab-bar'),
+      btnCloseDrawer: document.getElementById('btn-close-drawer'),
       
       exportModal: document.getElementById('modal-export'),
       infoModal: document.getElementById('modal-info'),
@@ -45,6 +49,19 @@ class ControlsManager {
       btnRevealHUD: document.getElementById('btn-reveal-hud'),
       hudToast: document.getElementById('hud-toast')
     };
+
+    // Mobile check to adjust default export resolution presentation
+    const isMobile = typeof window !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator?.userAgent || '') || window.innerWidth <= 768);
+    if (isMobile) {
+      const opt8k = document.querySelector('#select-export-res option[value="8k"]');
+      if (opt8k) {
+        opt8k.textContent = '8K Ultra HD (Desktop Only - Capped at 4K)';
+      }
+      const selectRes = document.getElementById('select-export-res');
+      if (selectRes && selectRes.value === '8k') {
+        selectRes.value = '4k';
+      }
+    }
   }
 
   bindEvents() {
@@ -56,6 +73,36 @@ class ControlsManager {
     // Drawer Toggle
     if (this.ui.drawerToggle) {
       this.ui.drawerToggle.addEventListener('click', () => {
+        this.ui.drawer.classList.toggle('collapsed');
+      });
+    }
+
+    // Mobile Drawer Close Button
+    if (this.ui.btnCloseDrawer && this.ui.drawer) {
+      this.ui.btnCloseDrawer.addEventListener('click', () => {
+        this.ui.drawer.classList.add('collapsed');
+      });
+    }
+
+    // Mobile Bottom Sheet Grab Bar: Tap to toggle or drag/swipe down to collapse
+    if (this.ui.sheetGrabBar && this.ui.drawer) {
+      let touchStartY = 0;
+      this.ui.sheetGrabBar.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          touchStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      this.ui.sheetGrabBar.addEventListener('touchmove', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          const deltaY = e.touches[0].clientY - touchStartY;
+          if (deltaY > 50) {
+            this.ui.drawer.classList.add('collapsed');
+          }
+        }
+      }, { passive: true });
+
+      this.ui.sheetGrabBar.addEventListener('click', () => {
         this.ui.drawer.classList.toggle('collapsed');
       });
     }
@@ -647,6 +694,8 @@ class ControlsManager {
 
     if (this.ui.hudToast) {
       if (isNowHidden) {
+        const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator && navigator.maxTouchPoints > 0) || window.innerWidth <= 768);
+        this.ui.hudToast.textContent = isTouch ? 'UI Hidden • Tap ⚙️ or double-tap canvas to restore' : 'UI Hidden • Press H or Tab to restore';
         this.ui.hudToast.classList.add('active');
         clearTimeout(this.toastTimer);
         this.toastTimer = setTimeout(() => {
@@ -667,10 +716,18 @@ class ControlsManager {
 
     if (resSelect) {
       const val = resSelect.value;
+      const isMobile = typeof window !== 'undefined' && (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator?.userAgent || '') || window.innerWidth <= 768);
       if (val === '1080p') { width = 1920; height = 1080; }
       else if (val === '2k') { width = 2560; height = 1440; }
       else if (val === '4k') { width = 3840; height = 2160; }
-      else if (val === '8k') { width = 7680; height = 4320; }
+      else if (val === '8k') {
+        if (isMobile) {
+          this.showNotification('⚠️ 8K requires desktop hardware; rendering at 4K UHD');
+          width = 3840; height = 2160;
+        } else {
+          width = 7680; height = 4320;
+        }
+      }
       else if (val === 'square4k') { width = 4096; height = 4096; }
       else if (val === 'screen') { width = window.innerWidth * (window.devicePixelRatio || 1); height = window.innerHeight * (window.devicePixelRatio || 1); }
     }

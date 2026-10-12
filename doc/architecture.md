@@ -80,13 +80,34 @@ animate(now) {
 
 ---
 
-## Input & Event Management
+## Input, Touch & Gesture Management
 
-`app.initEvents()` tracks mouse and touch inputs:
+`app.initEvents()` tracks mouse and multi-touch inputs:
 - Tracks `mouse.x`, `mouse.y`, `mouse.prevX`, `mouse.prevY`, `mouse.isDown`, and `mouse.isHovering`.
-- Ignores mouse down events originating inside HUD panels (`#hud`) or modals (`.modal`).
-- Supports touch devices (`touchstart`, `touchmove`, `touchend`).
-- Drives the visual brush cursor `#mouse-brush-cursor` for the Mouse Pointer Painting mode.
+- Ignores interactions originating inside HUD panels (`#hud`) or modals (`.modal`).
+- **Touch & Gesture Engine**:
+  - **Single Finger Drag**: Updates active pointer for physics forces or painting particles (`spawnMode: 'pointer'`).
+  - **Double-Tap on Canvas**: Toggles Zen Mode (hides/reveals HUD) without needing a physical keyboard.
+  - **Two-Finger Tap**: Instantly toggles simulation Play/Pause.
+  - **Touch Brush Indicator**: Displays visual brush ring `#mouse-brush-cursor` directly under finger while dragging on touchscreens.
+
+---
+
+## Mobile & Tablet Responsive Architecture
+
+1. **Mobile Bottom Sheet Engine (`@media (max-width: 768px)`)**:
+   - In portrait mode, `#control-drawer` transforms into a swipeable/draggable bottom sheet (`bottom: 0`, max-height: `80vh`).
+   - Equipped with a top grab handle (`#sheet-grab-bar`) allowing tap or drag-down gestures to dismiss.
+   - Preserves top 20–25% of the screen so user can observe real-time generative changes while scrubbing sliders.
+2. **Mobile Landscape Panel (`@media (max-height: 520px) and (orientation: landscape)`)**:
+   - In landscape orientation, bottom sheets would occlude the entire vertical screen. The drawer dynamically switches to a narrow right slide-over panel (300px), preserving 70% of widescreen canvas visibility.
+3. **Safe Area Insets**:
+   - Implements CSS `env(safe-area-inset-*)` variables (`--safe-top`, `--safe-bottom`, etc.) and `viewport-fit=cover` to render edge-to-edge behind notches and navigation bars.
+4. **Hardware Adaptation & DPR Clamping**:
+   - High-DPI smartphones (Retina 3.0x) clamp canvas DPR to 1.5x, slashing pixel fill-rate load by ~75% and preventing thermal throttling during 1M particle simulation.
+5. **Memory Safety & iOS Safari Support**:
+   - Export resolution is safely capped at 4K UHD on mobile browsers to prevent WebKit memory allocation crashes.
+   - Automatic `MediaRecorder` MIME detection selects `video/mp4` for iOS Safari and `video/webm` for Chrome/Firefox.
 
 ---
 
@@ -96,6 +117,7 @@ Automated unit and integration testing is implemented using Node.js's built-in t
 - **`tests/controls.test.js`**: Validates slider log-scaling, formatting, and DOM badge rendering.
 - **`tests/menu-ui.test.js`**: Checks DOM interactive ID uniqueness, tab integrity, and parameter existence.
 - **`tests/mode-params.test.js`**: Tests parameter dictionaries, default values, and time integration across generative modes.
+- **`tests/mobile-responsive.test.js`**: Tests mobile DPR clamping, mobile export resolution safeguards, iOS MP4 video detection, and safe-area DOM/CSS structures.
 
 Tests are run via `node --test tests/*.test.js` or `npm test`.
 

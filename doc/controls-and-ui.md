@@ -79,3 +79,20 @@ The random dice button (<kbd>R</kbd>) avoids chaotic unusable parameter combinat
 - **Particle Velocity**: Biased heavily toward pleasant speeds ($0.08$–$0.45$), rarely selecting above $1.0$.
 - **Noise Scales**: Scaled to harmonic sweet spots for the active mode.
 - **Color Palettes**: Randomly selects from the curated cosine gradient palette collection.
+
+---
+
+## 7. Mobile & Tablet UI Adaptations
+
+### Bottom Sheet Architecture (`<= 768px`)
+- **Three Interaction States**:
+  1. **Zen Mode (100% Canvas)**: Fullscreen contemplation. Floating mini-trigger button (`#btn-reveal-hud`) allows one-tap restoration.
+  2. **Peek / Quick Bar**: Clean top bar with essential controls (Mode badge, Play/Pause, Randomize, Export, Settings).
+  3. **Expanded Bottom Sheet**: Max 80vh height bottom sheet with grab handle (`#sheet-grab-bar`) and close button (`#btn-close-drawer`). Dragging or swiping down collapses the sheet.
+- **Landscape Adaptation (`<= 520px` height)**: Automatically switches from a bottom sheet to a right slide-over panel (300px), preserving 70% of canvas width.
+- **Touch Gestures (Replacing Desktop Shortcuts)**:
+  - **Double-Tap Canvas**: Toggles HUD (Zen Mode) without keyboard.
+  - **Two-Finger Tap**: Toggles Play / Pause.
+  - **Touch / Pencil Drag**: Paints particles in pointer mode or exerts physics forces.
+- **Ergonomics**: All buttons, selects, and checkboxes have a minimum hit area of `44px × 44px`. Slider thumbs expand to `24px` for coarse touch inputs.
+
