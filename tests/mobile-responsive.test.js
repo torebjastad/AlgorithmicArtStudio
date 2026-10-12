@@ -146,4 +146,23 @@ test('Mobile & Tablet Responsive Adaptations', async (t) => {
     const chromeType = exp.getSupportedVideoMimeType();
     assert.equal(chromeType.ext, 'webm', 'Chrome must select WebM video format');
   });
+
+  await t.test('GPU Particles sim shader defines u_frameSeed for continuous pointer spawning', () => {
+    const gpuPath = path.join(__dirname, '..', 'js', 'modes', 'gpu-particles.js');
+    const gpuCode = fs.readFileSync(gpuPath, 'utf8');
+
+    assert.ok(gpuCode.includes('uniform float u_frameSeed;'), 'sim shader must declare u_frameSeed');
+    assert.ok(gpuCode.includes('hash12(seed + vec2(u_frameSeed * 0.17'), 'pointer mode wake check must use u_frameSeed');
+    assert.ok(gpuCode.includes('u_frameSeed'), 'must pass u_frameSeed to simProgram');
+    assert.ok(gpuCode.includes('(p.spawnMode === \'pointer\' && mouse.isDown)'), 'isMousePainting should check mouse.isDown directly');
+  });
+
+  await t.test('app.js protects touch painting: preventDefault and pointer mode double-tap immunity', () => {
+    const appPath = path.join(__dirname, '..', 'js', 'app.js');
+    const appCode = fs.readFileSync(appPath, 'utf8');
+
+    assert.ok(appCode.includes('!isPointerMode && now - lastTapTime < 320'), 'Double-tap HUD toggle must be disabled during pointer painting mode');
+    assert.ok(appCode.includes('if (e.cancelable) {') && appCode.includes('e.preventDefault();'), 'Touch handlers must call preventDefault on canvas touches');
+  });
 });
+

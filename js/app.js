@@ -126,7 +126,7 @@ class AlgorithmicArtStudio {
       if (!brushCursor) return;
       const mode = this.currentMode;
       const isPointerMode = mode?.params?.spawnMode === 'pointer';
-      if (isPointerMode && this.mouse.isHovering) {
+      if (isPointerMode && (this.mouse.isHovering || this.mouse.isDown)) {
         const diam = mode.params.mouseSpawnDiameter || 80;
         brushCursor.style.display = 'block';
         brushCursor.style.left = `${this.mouse.x}px`;
@@ -179,6 +179,9 @@ class AlgorithmicArtStudio {
       }
 
       isTouchActiveOnCanvas = true;
+      if (e.cancelable) {
+        e.preventDefault(); // Prevents iOS magnifying glass, text callouts, and premature touchcancel
+      }
 
       // Two-finger tap detection (Play/Pause)
       if (e.touches.length === 2) {
@@ -193,9 +196,11 @@ class AlgorithmicArtStudio {
         const touch = e.touches[0];
         const now = performance.now();
         const dist = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
+        const isPointerMode = this.currentMode?.params?.spawnMode === 'pointer';
 
-        // Double-tap on canvas (<320ms and within 35px) toggles Zen Mode (HUD visibility)
-        if (now - lastTapTime < 320 && dist < 35) {
+        // Double-tap on canvas (<320ms and within 35px) toggles Zen Mode ONLY when NOT in pointer painting mode!
+        // In pointer mode, every tap/dab is an intentional paint stroke.
+        if (!isPointerMode && now - lastTapTime < 320 && dist < 35) {
           if (this.controls) {
             this.controls.toggleHUD();
           }
@@ -215,19 +220,28 @@ class AlgorithmicArtStudio {
         updatePointer(touch.clientX, touch.clientY);
         updateBrushCursor();
       }
-    }, { passive: true });
+    }, { passive: false });
 
     window.addEventListener('touchmove', (e) => {
       if (!isTouchActiveOnCanvas) return;
+      if (e.cancelable) {
+        e.preventDefault(); // Prevents mobile browser scrolling or gesture hijacking while painting
+      }
 
-      if (e.touches.length === 1) {
+      if (e.touches.length >= 1) {
         const touch = e.touches[0];
+        this.mouse.isDown = true;
+        this.mouse.isHovering = true;
         updatePointer(touch.clientX, touch.clientY);
         updateBrushCursor();
       }
-    }, { passive: true });
+    }, { passive: false });
 
     window.addEventListener('touchend', (e) => {
+      if (isTouchActiveOnCanvas && e.cancelable) {
+        e.preventDefault();
+      }
+
       // Check if two-finger tap just completed (<350ms)
       if (twoFingerStart > 0 && e.touches.length === 0) {
         const duration = performance.now() - twoFingerStart;
@@ -246,8 +260,14 @@ class AlgorithmicArtStudio {
         this.mouse.isHovering = false;
         isTouchActiveOnCanvas = false;
         updateBrushCursor();
+      } else if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        this.mouse.isDown = true;
+        this.mouse.isHovering = true;
+        updatePointer(touch.clientX, touch.clientY);
+        updateBrushCursor();
       }
-    });
+    }, { passive: false });
 
     window.addEventListener('touchcancel', () => {
       this.mouse.isDown = false;

@@ -90,6 +90,7 @@ class GPUParticlesMode {
 
       uniform vec2 u_resolution;
       uniform float u_time;
+      uniform float u_frameSeed;
       uniform float u_noiseScale;
       uniform float u_octaves;
       uniform float u_persistence;
@@ -256,12 +257,12 @@ class GPUParticlesMode {
             if (u_spawnMode == 3) {
               // Mouse Pointer Mode: only wake up when mouse is clicked/active on canvas
               if (u_mouseSpawnActive == 1) {
-                if (hash12(seed + vec2(u_time * 0.17, 3.41)) < u_mouseSpawnProb) {
-                  vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
+                if (hash12(seed + vec2(u_frameSeed * 0.17, 3.41)) < u_mouseSpawnProb) {
+                  vec2 rnd = hash22(seed + vec2(u_frameSeed * 0.01, 1.73));
                   pos = getSpawnPos(rnd, u_resolution, 3);
                   oldPos = pos;
                   age = 0.0;
-                  maxLife = (180.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
+                  maxLife = (180.0 + hash12(seed + vec2(u_frameSeed * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
                   seed += vec2(0.137, 0.291);
                 } else {
                   outPosLife = vec4(-9999.0, -9999.0, 99999.0, maxLife);
@@ -278,18 +279,18 @@ class GPUParticlesMode {
               // If resuming after being retired with P (age >= 90000.0), stagger resumption smoothly.
               if (age >= 90000.0) {
                 float wakeChance = 1.0 / (400.0 * max(1.0, 1.6 / max(0.01, u_particleSpeed)));
-                if (hash12(seed + vec2(u_time * 0.1, 7.19)) > wakeChance) {
+                if (hash12(seed + vec2(u_frameSeed * 0.1, 7.19)) > wakeChance) {
                   outPosLife = vec4(-9999.0, -9999.0, age, maxLife);
                   outPrevSeed = vec4(-9999.0, -9999.0, seed);
                   return;
                 }
               }
 
-              vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
+              vec2 rnd = hash22(seed + vec2(u_frameSeed * 0.01, 1.73));
               pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
               oldPos = pos;
               age = 0.0;
-              maxLife = (180.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
+              maxLife = (180.0 + hash12(seed + vec2(u_frameSeed * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
               seed += vec2(0.137, 0.291);
             }
           } else {
@@ -307,12 +308,12 @@ class GPUParticlesMode {
         if (isDead) {
           if (u_spawnEnabled == 1 && u_spawnMode != 3) {
             // Normal mode: Respawn new particle at spawn origin
-            vec2 rnd = hash22(seed + vec2(u_time * 0.01, 1.73));
+            vec2 rnd = hash22(seed + vec2(u_frameSeed * 0.01, 1.73));
             pos = getSpawnPos(rnd, u_resolution, u_spawnMode);
             oldPos = pos; // Avoid connecting streak across screen on respawn
             age = 0.0;
             // Scale lifetime with speed so particles have time to traverse the entire field
-            maxLife = (180.0 + hash12(seed + vec2(u_time * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
+            maxLife = (180.0 + hash12(seed + vec2(u_frameSeed * 0.01, 3.91)) * 360.0) * max(1.0, 1.6 / max(0.01, u_particleSpeed));
             seed += vec2(0.137, 0.291);
           } else {
             // Spawning Stopped Mode OR Pointer Mode: retire off-screen
@@ -768,6 +769,8 @@ class GPUParticlesMode {
     // Set Uniforms
     gl.uniform2f(gl.getUniformLocation(this.simProgram, 'u_resolution'), this.app.width, this.app.height);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_time'), this.fieldTime || 0.0);
+    this.frameSeed = ((this.frameSeed || 0) + 1.237) % 10000.0;
+    gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_frameSeed'), this.frameSeed);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_noiseScale'), p.noiseScale);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_octaves'), p.octaves);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_persistence'), p.persistence);
@@ -787,8 +790,8 @@ class GPUParticlesMode {
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_mouseRadius'), p.mouseRadius);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_mouseStrength'), p.mouseStrength);
 
-    // Mouse Pointer Painting Uniforms
-    const isMousePainting = (p.spawnMode === 'pointer' && mouse.isDown && mouse.isHovering) ? 1 : 0;
+    // Mouse / Touch Pointer Painting Uniforms
+    const isMousePainting = (p.spawnMode === 'pointer' && mouse.isDown) ? 1 : 0;
     gl.uniform1i(gl.getUniformLocation(this.simProgram, 'u_mouseSpawnActive'), isMousePainting);
     gl.uniform1f(gl.getUniformLocation(this.simProgram, 'u_mouseSpawnDiameter'), p.mouseSpawnDiameter || 80.0);
     const spawnRate = Math.max(1, p.mouseSpawnRate || 200);

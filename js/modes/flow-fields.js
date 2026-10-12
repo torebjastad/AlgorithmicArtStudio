@@ -157,7 +157,7 @@ class FlowFieldMode {
     const jitter = p.jitter;
     const mouseRadiusSq = p.mouseRadius * p.mouseRadius;
 
-    let toSpawn = (p.spawnMode === 'pointer' && mouse.isDown && mouse.isHovering) ? (p.mouseSpawnRate || 30) : 0;
+    let toSpawn = (p.spawnMode === 'pointer' && mouse.isDown) ? (p.mouseSpawnRate || 30) : 0;
 
     for (let i = 0; i < count; i++) {
       // Stratified pre-spawn delay queue for steady continuous edge/center inflow
