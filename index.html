@@ -113,9 +113,6 @@
               <option value="gpu_particles" selected>⚡ GPU Super-Flow (1,000,000 Particles)</option>
               <option value="flow">🌌 Classic Flow Fields (CPU Particles)</option>
               <option value="domain_warp">🌀 Domain Warped Fluid (GPU GLSL)</option>
-              <option value="topographic">🗺️ Topographic Isolines (Mapmaker)</option>
-              <option value="terrain3d">🌆 3D Cyber Horizon / Terrain</option>
-              <option value="ribbons">🎀 Harmonic Silk Ribbons</option>
             </select>
           </div>
 
@@ -131,7 +128,7 @@
           </div>
 
           <div class="control-section-header">MATHEMATICAL FIELD</div>
-          <div class="control-group" data-show-for-mode="flow,gpu_particles,topographic,terrain3d,ribbons">
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <div class="label-row">
               <label for="slider-scale">Noise Scale / Frequency</label>
               <span class="val-badge" data-badge="noiseScale">0.0006</span>
@@ -306,76 +303,6 @@
             </label>
           </div>
 
-          <!-- Topographic Controls -->
-          <div class="control-section-header" data-show-for-mode="topographic">CONTOUR CARTOGRAPHY</div>
-
-          <div class="control-group" data-show-for-mode="topographic">
-            <div class="label-row">
-              <label for="slider-contours">Contour Elevation Levels</label>
-              <span class="val-badge" data-badge="contourLevels">24</span>
-            </div>
-            <input type="range" id="slider-contours" data-param="contourLevels" min="6" max="60" step="2" value="24">
-          </div>
-
-          <div class="control-group" data-show-for-mode="topographic">
-            <label class="checkbox-label">
-              <input type="checkbox" id="check-fill-bands" data-param="fillBands" checked>
-              <span>Elevation Gradient Shading</span>
-            </label>
-          </div>
-
-          <!-- 3D Terrain Controls -->
-          <div class="control-section-header" data-show-for-mode="terrain3d">3D LANDSCAPE DYNAMICS</div>
-
-          <div class="control-group" data-show-for-mode="terrain3d">
-            <div class="label-row">
-              <label for="slider-terrain-height">Mountain Peak Height</label>
-              <span class="val-badge" data-badge="heightMultiplier">220</span>
-            </div>
-            <input type="range" id="slider-terrain-height" data-param="heightMultiplier" min="50" max="500" step="10" value="220">
-          </div>
-
-          <div class="control-group" data-show-for-mode="terrain3d">
-            <div class="label-row">
-              <label for="slider-terrain-fly-speed">Horizon Flight Speed</label>
-              <span class="val-badge" data-badge="flySpeed">1.50</span>
-            </div>
-            <input type="range" id="slider-terrain-fly-speed" data-param="flySpeed" min="0.2" max="4.0" step="0.1" value="1.5">
-          </div>
-
-          <div class="control-group" data-show-for-mode="terrain3d">
-            <label class="checkbox-label">
-              <input type="checkbox" id="check-ridged" data-param="ridgedPeaks">
-              <span>Ridged Multifractal Sharp Peaks</span>
-            </label>
-          </div>
-
-          <!-- Harmonic Ribbons Controls -->
-          <div class="control-section-header" data-show-for-mode="ribbons">HARMONIC SPLINE RIBBONS</div>
-
-          <div class="control-group" data-show-for-mode="ribbons">
-            <div class="label-row">
-              <label for="slider-ribbon-count">Ribbon Strand Count</label>
-              <span class="val-badge" data-badge="ribbonCount">16</span>
-            </div>
-            <input type="range" id="slider-ribbon-count" data-param="ribbonCount" min="4" max="36" step="2" value="16">
-          </div>
-
-          <div class="control-group" data-show-for-mode="ribbons">
-            <div class="label-row">
-              <label for="slider-ribbon-amplitude">Wave Amplitude (Displacement)</label>
-              <span class="val-badge" data-badge="amplitude">160</span>
-            </div>
-            <input type="range" id="slider-ribbon-amplitude" data-param="amplitude" min="40" max="320" step="10" value="160">
-          </div>
-
-          <div class="control-group" data-show-for-mode="ribbons">
-            <div class="label-row">
-              <label for="slider-ribbon-width">Ribbon Band Width</label>
-              <span class="val-badge" data-badge="ribbonWidth">45</span>
-            </div>
-            <input type="range" id="slider-ribbon-width" data-param="ribbonWidth" min="10" max="120" step="5" value="45">
-          </div>
         </section>
 
         <!-- TAB 3: Shading & Style -->
@@ -383,7 +310,7 @@
           <div class="control-section-header">GEOMETRY & STROKE STYLING</div>
 
           <!-- Particle Size / Stroke Width (Universal) -->
-          <div class="control-group" data-show-for-mode="flow,gpu_particles,topographic,terrain3d,ribbons">
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <div class="label-row">
               <label for="slider-stroke-width">Particle Size / Stroke Width</label>
               <span class="val-badge" data-badge="strokeWidth">2.00</span>
@@ -438,7 +365,7 @@
           <div class="control-section-header">COMPOSITING & SHADERS</div>
 
           <!-- Canvas Blend Mode (Single source of truth) -->
-          <div class="control-group" data-show-for-mode="flow,ribbons,gpu_particles">
+          <div class="control-group" data-show-for-mode="flow,gpu_particles">
             <label for="select-blend-mode">Canvas Blend Mode</label>
             <select id="select-blend-mode" class="glass-select" data-param="blendMode">
               <option value="lighter" selected>Lighter / Additive (Luminous Glow & Pearl Beads)</option>
@@ -448,17 +375,6 @@
               <option value="overlay">Overlay (High Dynamic Contrast)</option>
               <option value="multiply">Multiply (Watercolor & Ink Pigment)</option>
               <option value="difference">Difference (Psychedelic Inversion)</option>
-            </select>
-          </div>
-
-          <!-- 3D Terrain controls -->
-          <div class="control-group" data-show-for-mode="terrain3d">
-            <label for="select-terrain-style">3D Render Style</label>
-            <select id="select-terrain-style" class="glass-select" data-param="renderStyle">
-              <option value="wireframe">Cyber Wireframe Grid</option>
-              <option value="shaded">Faceted Shaded Polygons</option>
-              <option value="hybrid">Wireframe + Shaded Mesh</option>
-              <option value="points">Matrix Point Cloud</option>
             </select>
           </div>
 
@@ -667,9 +583,6 @@
   <script src="js/modes/gpu-particles.js"></script>
   <script src="js/modes/flow-fields.js"></script>
   <script src="js/modes/domain-warp.js"></script>
-  <script src="js/modes/topographic.js"></script>
-  <script src="js/modes/terrain3d.js"></script>
-  <script src="js/modes/ribbons.js"></script>
   <script src="js/ui/controls.js"></script>
   <script src="js/app.js"></script>
 </body>

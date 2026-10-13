@@ -542,12 +542,6 @@ class ControlsManager {
       if (modeKey === 'gpu_particles') {
         // GPU particles thrive on ultra-wide, silky cosmic flows
         p.noiseScale = 0.0004 + Math.random() * 0.0010;
-      } else if (modeKey === 'terrain3d') {
-        p.noiseScale = 0.02 + Math.random() * 0.03;
-      } else if (modeKey === 'topographic') {
-        p.noiseScale = 0.002 + Math.random() * 0.004;
-      } else if (modeKey === 'ribbons') {
-        p.noiseScale = 0.0015 + Math.random() * 0.0035;
       } else {
         p.noiseScale = 0.0015 + Math.random() * 0.0035;
       }
@@ -642,24 +636,12 @@ class ControlsManager {
       p.glowAlpha = Math.round((0.6 + Math.random() * 0.4) * 100) / 100;
     }
 
-    // 10. Domain Warp & 3D Terrain specific parameters
+    // 10. Domain Warp specific parameters
     if (p.warpIntensity !== undefined) p.warpIntensity = Math.round((1.5 + Math.random() * 2.5) * 10) / 10;
     if (p.scale !== undefined && modeKey === 'domain_warp') p.scale = Math.round((1.5 + Math.random() * 2.5) * 10) / 10;
     if (p.lightIntensity !== undefined) p.lightIntensity = Math.round((0.8 + Math.random() * 1.2) * 10) / 10;
-    if (p.contourLevels !== undefined) p.contourLevels = Math.floor(12 + Math.random() * 26);
-    if (p.fillBands !== undefined) p.fillBands = Math.random() > 0.35;
-    if (p.renderStyle !== undefined) {
-      const styles = ['wireframe', 'shaded', 'points', 'hybrid'];
-      p.renderStyle = styles[Math.floor(Math.random() * styles.length)];
-    }
-    if (p.flySpeed !== undefined) p.flySpeed = Math.round((0.8 + Math.random() * 2.2) * 10) / 10;
 
-    // 11. Ribbons specific parameters
-    if (p.ribbonCount !== undefined) p.ribbonCount = Math.floor(8 + Math.random() * 18);
-    if (p.amplitude !== undefined) p.amplitude = Math.round(80 + Math.random() * 140);
-    if (p.ribbonWidth !== undefined) p.ribbonWidth = Math.round(20 + Math.random() * 50);
-
-    // 12. Interactive Mouse Dynamics
+    // 11. Interactive Mouse Dynamics
     if (p.mouseStrength !== undefined) p.mouseStrength = Math.round((1.5 + Math.random() * 4.5) * 10) / 10;
 
     // Pick random palette

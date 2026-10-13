@@ -34,7 +34,7 @@ The export modal (<kbd>S</kbd> or Export button in HUD) supports multiple output
   - Automatically triggers a browser download using a generated object URL (`a.download`).
 
 ### Vector Path Export (SVG)
-- Available for vector-based modes (`flow`, `topographic`, `ribbons`).
+- Available for vector-based modes (`flow`).
 - Transcribes active path segments into native SVG `<path d="...">` elements with embedded stroke styling.
 - Produces infinitely scalable vector artwork suitable for pen plotters, printing, and laser cutting.
 

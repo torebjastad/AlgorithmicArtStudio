@@ -21,10 +21,7 @@ AlgorithmicArtStudio/
 │   ├── modes/                 # Generative mode implementations
 │   │   ├── gpu-particles.js   # 1M+ particle GPGPU simulation & ribbon renderer
 │   │   ├── flow-fields.js     # CPU agent particle simulation with velocity tapering
-│   │   ├── domain-warp.js     # WebGL procedural marble & plasma shader
-│   │   ├── topographic.js     # 2D contour vector isoline marching
-│   │   ├── terrain3d.js       # 3D interactive heightfield wireframe & mesh
-│   │   └── ribbons.js         # 3D parametric harmonic spline ribbons
+│   │   └── domain-warp.js     # WebGL procedural marble & plasma shader
 │   ├── noise/                 # Procedural noise mathematical libraries
 │   │   ├── perlin.js          # Classic Perlin noise 2D / 3D with octaves
 │   │   ├── simplex.js         # Simplex noise 2D / 3D
@@ -45,7 +42,7 @@ The studio uses two HTML5 canvas elements positioned absolutely over the full vi
    - Active during GPU-accelerated modes: `gpu_particles` and `domain_warp`.
    - Utilizes hardware acceleration, GPGPU transform/texture simulation passes, and fragment shaders.
 2. **`#art-canvas`**: Dedicated HTML5 Canvas2D context (`canvas-renderer.js`).
-   - Active during CPU canvas modes: `flow`, `topographic`, `terrain3d`, `ribbons`.
+   - Active during CPU canvas mode: `flow`.
    - Employs an offscreen trail canvas buffer for smooth alpha fading, compositing, and vector stroke rendering.
 
 ### Mode Switching (`app.setMode(modeKey)`)
@@ -106,7 +103,6 @@ To eliminate boundary discontinuities and inspect fine fractal vortices **withou
    - **Domain Warp (`domain-warp.js`)**: Evaluates the procedural multi-tier fBm equations per-fragment with camera center offset:
      $$\text{st} = \frac{\text{gl\_FragCoord} - \text{u\_cameraCenter}}{\min(W, H)} \times \frac{u\_scale}{u\_zoom}$$
    - **Flow Fields (`flow-fields.js`)**: Batch-draws particle vectors projected by camera position and zoom onto the native high-DPI canvas buffer with crisp 1:1 line widths.
-   - **Topography, 3D Terrain & Ribbons**: Heightmaps, ribbons, and 3D camera FOV project and sample directly relative to camera world position.
    - **Never Decay Protection**: When `fadeRate <= 0.00001`, changing zoom refreshes the canvas buffer so the new cropped camera view accumulates cleanly.
 
 2. **Inverse Coordinate Mapping**:

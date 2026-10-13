@@ -45,7 +45,7 @@ test('Menu UI & HTML Parameter Architecture', async (t) => {
   });
 
   await t.test('Every generative mode has visible controls in Tab 1, Tab 2, and Tab 3', () => {
-    const modes = ['gpu_particles', 'flow', 'domain_warp', 'topographic', 'terrain3d', 'ribbons'];
+    const modes = ['gpu_particles', 'flow', 'domain_warp'];
 
     // Extract tab panes
     const getPaneContent = (paneId) => {
@@ -92,13 +92,11 @@ test('Menu UI & HTML Parameter Architecture', async (t) => {
     });
   });
 
-  await t.test('New parameters (mouseStrength, flySpeed, ribbonCount, amplitude, ribbonWidth, lightIntensity) are defined in HTML', () => {
+  await t.test('Core parameters (mouseStrength, lightIntensity, streakLength, glowAlpha) are defined in HTML', () => {
     assert.ok(html.includes('data-param="mouseStrength"'));
-    assert.ok(html.includes('data-param="flySpeed"'));
-    assert.ok(html.includes('data-param="ribbonCount"'));
-    assert.ok(html.includes('data-param="amplitude"'));
-    assert.ok(html.includes('data-param="ribbonWidth"'));
     assert.ok(html.includes('data-param="lightIntensity"'));
+    assert.ok(html.includes('data-param="streakLength"'));
+    assert.ok(html.includes('data-param="glowAlpha"'));
   });
 
   await t.test('Evolution / timeSpeed slider defaults to 0.0 and allows higher values than 0.2', () => {

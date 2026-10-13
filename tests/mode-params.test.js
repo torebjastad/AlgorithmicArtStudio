@@ -22,9 +22,6 @@ function loadScript(relPath) {
 loadScript('js/modes/gpu-particles.js');
 loadScript('js/modes/flow-fields.js');
 loadScript('js/modes/domain-warp.js');
-loadScript('js/modes/topographic.js');
-loadScript('js/modes/terrain3d.js');
-loadScript('js/modes/ribbons.js');
 
 function createMockApp() {
   return {
@@ -61,51 +58,27 @@ test('Mode Parameter Integrity & Normalization', async (t) => {
   const mockApp = createMockApp();
 
   await t.test('All modes instantiate with valid params dictionary', () => {
-    const topo = new TopographicMode(mockApp);
-    const ribbons = new RibbonsMode(mockApp);
-    const terrain = new Terrain3DMode(mockApp);
     const domainWarp = new DomainWarpMode(mockApp);
     const flow = new FlowFieldMode(mockApp);
     const gpu = new GPUParticlesMode(mockApp);
 
-    assert.ok(topo.params && typeof topo.params === 'object');
-    assert.ok(ribbons.params && typeof ribbons.params === 'object');
-    assert.ok(terrain.params && typeof terrain.params === 'object');
     assert.ok(domainWarp.params && typeof domainWarp.params === 'object');
     assert.ok(flow.params && typeof flow.params === 'object');
     assert.ok(gpu.params && typeof gpu.params === 'object');
   });
 
-  await t.test('Topographic and Ribbons support noiseScale parameter', () => {
-    const topo = new TopographicMode(mockApp);
-    const ribbons = new RibbonsMode(mockApp);
+  await t.test('Flow and GPU particles support noiseScale parameter', () => {
+    const flow = new FlowFieldMode(mockApp);
+    const gpu = new GPUParticlesMode(mockApp);
 
-    assert.equal(typeof topo.params.noiseScale, 'number');
-    assert.equal(topo.params.noiseScale, 0.004);
-    assert.equal(topo.params.scale, 0.004);
-
-    assert.equal(typeof ribbons.params.noiseScale, 'number');
-    assert.equal(ribbons.params.noiseScale, 0.003);
-    assert.equal(ribbons.params.scale, 0.003);
+    assert.equal(typeof flow.params.noiseScale, 'number');
+    assert.equal(typeof gpu.params.noiseScale, 'number');
   });
 
   await t.test('Domain Warp has active default mouse influence', () => {
     const domainWarp = new DomainWarpMode(mockApp);
     assert.ok(domainWarp.params.mouseInfluence > 0, 'mouseInfluence should be > 0 so distortion can take effect');
     assert.equal(typeof domainWarp.params.lightIntensity, 'number');
-  });
-
-  await t.test('Terrain 3D has flySpeed parameter', () => {
-    const terrain = new Terrain3DMode(mockApp);
-    assert.equal(typeof terrain.params.flySpeed, 'number');
-    assert.ok(terrain.params.flySpeed > 0);
-  });
-
-  await t.test('Ribbons has ribbonCount, amplitude, and ribbonWidth parameters', () => {
-    const ribbons = new RibbonsMode(mockApp);
-    assert.equal(typeof ribbons.params.ribbonCount, 'number');
-    assert.equal(typeof ribbons.params.amplitude, 'number');
-    assert.equal(typeof ribbons.params.ribbonWidth, 'number');
   });
 
   await t.test('Flow and GPU particles have mouseStrength parameter', () => {
@@ -118,14 +91,10 @@ test('Mode Parameter Integrity & Normalization', async (t) => {
   await t.test('Modes default timeSpeed to 0.0 (frozen) and continuously integrate fieldTime', () => {
     const gpu = new GPUParticlesMode(mockApp);
     const flow = new FlowFieldMode(mockApp);
-    const topo = new TopographicMode(mockApp);
-    const ribbons = new RibbonsMode(mockApp);
     const domainWarp = new DomainWarpMode(mockApp);
 
     assert.equal(gpu.params.timeSpeed, 0.0, 'gpu_particles timeSpeed should default to 0.0');
     assert.equal(flow.params.timeSpeed, 0.0, 'flow timeSpeed should default to 0.0');
-    assert.equal(topo.params.timeSpeed, 0.0, 'topographic timeSpeed should default to 0.0');
-    assert.equal(ribbons.params.timeSpeed, 0.0, 'ribbons timeSpeed should default to 0.0');
     assert.equal(domainWarp.params.timeSpeed, 0.0, 'domainWarp timeSpeed should default to 0.0');
 
     assert.equal(gpu.fieldTime || 0, 0);

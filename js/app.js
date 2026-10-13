@@ -53,10 +53,7 @@ class AlgorithmicArtStudio {
     this.modes = {
       gpu_particles: new GPUParticlesMode(this),
       flow: new FlowFieldMode(this),
-      domain_warp: new DomainWarpMode(this),
-      topographic: new TopographicMode(this),
-      terrain3d: new Terrain3DMode(this),
-      ribbons: new RibbonsMode(this)
+      domain_warp: new DomainWarpMode(this)
     };
 
     this.currentModeKey = 'gpu_particles';

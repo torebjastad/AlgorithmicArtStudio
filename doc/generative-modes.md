@@ -1,6 +1,6 @@
 # Generative Disciplines & Art Modes
 
-The studio includes six distinct generative modes, accessible via keyboard shortcuts <kbd>1</kbd>–<kbd>6</kbd> or the Mode Selector dropdown.
+The studio focuses on three premier generative disciplines, accessible via keyboard shortcuts <kbd>1</kbd>–<kbd>3</kbd> or the Mode Selector dropdown:
 
 ---
 
@@ -12,7 +12,7 @@ The studio includes six distinct generative modes, accessible via keyboard short
   - Interactive mouse forces (attraction, repulsion, vortex cyclonic swirl).
   - Four spawn origins: Full Canvas, Perimeter Edges, Center Core, and Mouse Pointer Brush.
   - Motion trail alpha decay and selectable hardware blend modes.
-  - Instanced Gaussian ribbon quads.
+  - Instanced Gaussian ribbon quads with camera projection zoom and pan.
 - *For detailed shader architecture, see [gpgpu-particles.md](gpgpu-particles.md).*
 
 ---
@@ -26,6 +26,7 @@ The studio includes six distinct generative modes, accessible via keyboard short
     $$\text{width} = \text{baseWidth} \cdot (0.3 + 0.7\alpha) \cdot (0.8 + 0.3 \cdot \min(v, 4.0))$$
   - Support for all spawn origins including Mouse Pointer Brush.
   - Offscreen trail buffer compositing with progressive alpha erasing (`destination-out`).
+  - Native high-DPI projection zoom and camera panning.
 
 ---
 
@@ -37,36 +38,5 @@ The studio includes six distinct generative modes, accessible via keyboard short
   - `marble`: Multi-layer swirling procedural marble veins.
   - `nebula`: Cosmic interstellar clouds and deep space dust plumes.
   - `plasma`: High-frequency undulating energetic energy fields.
-- **Parameters**: Warp Strength, Noise Frequency, Warping Depth (iterations), Flow Speed, Color Contrast, and Mouse Cursor Distortion.
-
----
-
-## 4. Topographic Cartography (`topographic` / <kbd>4</kbd>)
-- **Renderer**: HTML5 Canvas2D vector renderer.
-- **Key Concept**: Generates elevation contour maps from procedural heightfields.
-- **Algorithms**:
-  - 2D grid elevation sampling based on Multi-Octave Simplex Noise.
-  - Iso-contour line extraction using Marching Squares line-segment interpolation.
-  - Elevation color mapping via Cosine Gradient Palettes with elevation shading and gradient fills.
-- **Parameters**: Contour Interval, Elevation Scale, Line Weight, Shading Style, Coastline Mask.
-
----
-
-## 5. 3D Wireframe Terrain (`terrain3d` / <kbd>5</kbd>)
-- **Renderer**: HTML5 Canvas2D with custom 3D software projection pipeline.
-- **Key Concept**: Procedural mountain ranges, volcanic calderas, and desert dunes.
-- **3D Features**:
-  - Heightfield mesh generated via FBM Perlin noise with adjustable roughness and erosion simulation.
-  - Interactive camera orbit controls (pitch, yaw, distance, field of view).
-  - Depth sorting and wireframe hidden-line removal.
-  - Directional Lambertian lighting with sun altitude and azimuth angles.
-
----
-
-## 6. Harmonic Spline Ribbons (`ribbons` / <kbd>6</kbd>)
-- **Renderer**: HTML5 Canvas2D spline curves.
-- **Key Concept**: Sweeping harmonic ribbons undulating through higher-dimensional noise fields.
-- **Features**:
-  - Multi-strand spline curves traced with cubic Bezier / Catmull-Rom smoothing.
-  - Harmonic frequency modulation creating ribbon moiré interference patterns.
-  - Dynamic strand twisting and ribbon ribbon-width modulation along path length.
+- **Parameters**: Warp Strength, Noise Frequency, Warping Depth (iterations), Flow Speed, Color Contrast, Specular Normal Shading, and Mouse Cursor Distortion.
+- Infinite precision mathematical evaluation scaled by camera zoom and translated by camera pan.

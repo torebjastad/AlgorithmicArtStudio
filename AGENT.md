@@ -22,7 +22,7 @@ Before making modifications, review the relevant knowledge documents in `doc/`:
 | :--- | :--- |
 | **[`doc/architecture.md`](doc/architecture.md)** | Application lifecycle, dual-canvas pipeline (`#gl-canvas` vs `#art-canvas`), orchestrator (`app.js`), and input event handling. |
 | **[`doc/gpgpu-particles.md`](doc/gpgpu-particles.md)** | 1M+ particle GPGPU simulation pass, `RGBA32F` ping-pong textures, ribbon quad geometry, motion blur decay, and mouse pointer painting. |
-| **[`doc/generative-modes.md`](doc/generative-modes.md)** | Guide to all 6 generative disciplines: GPU Particles, Flow Fields, Domain Warping, Topography, 3D Terrain, and Harmonic Ribbons. |
+| **[`doc/generative-modes.md`](doc/generative-modes.md)** | Guide to the 3 premier generative disciplines: GPU Cosmic Particles (1M+), Classic Flow Fields, and Domain Warping. |
 | **[`doc/controls-and-ui.md`](doc/controls-and-ui.md)** | Glassmorphism HUD, logarithmic slider engine, badge formatting, conditional visibility tags, shortcuts, and randomized calibration. |
 | **[`doc/noise-and-math.md`](doc/noise-and-math.md)** | Mathematical foundations: Divergence-Free Curl Noise ($\nabla \times \psi$), FBM octaves, Inigo Quilez cosine palettes, and Gaussian ribbon cross-sections. |
 | **[`doc/rendering-and-export.md`](doc/rendering-and-export.md)** | Dual rendering pipelines, hardware blend modes (`lighter`, `screen`, `source-over`, etc.), and 8K / SVG export engine. |
