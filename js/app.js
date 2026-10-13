@@ -26,8 +26,15 @@ class AlgorithmicArtStudio {
     // Exporter
     this.exporter = new Exporter(this);
 
-    // Viewport Zoom State (0.5x to 5.0x)
+    // Viewport Zoom & Camera Projection State (0.5x to 5.0x)
     this.zoom = 1.0;
+    this.camera = {
+      x: this.width / 2,
+      y: this.height / 2
+    };
+    this.isPanning = false;
+    this.panStartX = 0;
+    this.panStartY = 0;
     this.zoomNotificationTimer = null;
 
     // Mouse & Touch Tracking
@@ -110,10 +117,25 @@ class AlgorithmicArtStudio {
     }
   }
 
-  setZoom(zoomLevel) {
+  setZoom(zoomLevel, focalX, focalY) {
     const clamped = Math.max(0.5, Math.min(5.0, zoomLevel));
     const prevZoom = this.zoom;
-    this.zoom = Math.round(clamped * 100) / 100;
+    const newZoom = Math.round(clamped * 100) / 100;
+
+    if (focalX !== undefined && focalY !== undefined && prevZoom !== newZoom) {
+      // Focal zoom: anchor world point under (focalX, focalY)
+      const halfW = this.width / 2;
+      const halfH = this.height / 2;
+      const factor = (1 / prevZoom) - (1 / newZoom);
+      this.camera.x += (focalX - halfW) * factor;
+      this.camera.y += (focalY - halfH) * factor;
+    } else if (newZoom === 1.0 && focalX === undefined) {
+      // Reset camera center to screen center
+      this.camera.x = this.width / 2;
+      this.camera.y = this.height / 2;
+    }
+
+    this.zoom = newZoom;
 
     // Keep canvas container 1:1 with screen pixels for full native resolution (no bitmap stretching)
     const container = document.getElementById('canvas-container');
@@ -142,6 +164,13 @@ class AlgorithmicArtStudio {
     }
   }
 
+  resetView() {
+    this.camera.x = this.width / 2;
+    this.camera.y = this.height / 2;
+    this.setZoom(1.0);
+  }
+
+
   showZoomNotification() {
     const badge = document.getElementById('floating-zoom-badge');
     if (!badge) return;
@@ -154,25 +183,31 @@ class AlgorithmicArtStudio {
 
   initEvents() {
     window.addEventListener('resize', () => {
+      const prevW = this.width;
+      const prevH = this.height;
       this.width = window.innerWidth;
       this.height = window.innerHeight;
+      if (prevW > 0 && prevH > 0) {
+        this.camera.x = (this.camera.x / prevW) * this.width;
+        this.camera.y = (this.camera.y / prevH) * this.height;
+      }
       this.renderer2D.resize(this.width, this.height);
       this.webgl.resize(this.width, this.height);
       this.resetCurrentMode();
     });
 
-    // Mouse & Touch Tracking with Zoom Transformation
+    // Mouse & Touch Tracking with Camera Projection Transformation
     const updatePointer = (screenX, screenY) => {
       this.mouse.prevX = this.mouse.x;
       this.mouse.prevY = this.mouse.y;
       this.mouse.screenX = screenX;
       this.mouse.screenY = screenY;
       const z = this.zoom || 1.0;
-      const cx = this.width / 2;
-      const cy = this.height / 2;
-      // Inverse zoom transformation from screen center
-      this.mouse.x = cx + (screenX - cx) / z;
-      this.mouse.y = cy + (screenY - cy) / z;
+      const halfW = this.width / 2;
+      const halfH = this.height / 2;
+      // Inverse camera projection transformation
+      this.mouse.x = this.camera.x + (screenX - halfW) / z;
+      this.mouse.y = this.camera.y + (screenY - halfH) / z;
     };
 
     const brushCursor = document.getElementById('mouse-brush-cursor');
@@ -199,6 +234,18 @@ class AlgorithmicArtStudio {
     this.updateBrushCursor = updateBrushCursor;
 
     window.addEventListener('mousemove', (e) => {
+      if (this.isPanning) {
+        const dx = e.clientX - this.panStartX;
+        const dy = e.clientY - this.panStartY;
+        const z = this.zoom || 1.0;
+        this.camera.x -= dx / z;
+        this.camera.y -= dy / z;
+        this.panStartX = e.clientX;
+        this.panStartY = e.clientY;
+        updatePointer(e.clientX, e.clientY);
+        updateBrushCursor();
+        return;
+      }
       updatePointer(e.clientX, e.clientY);
       this.mouse.isHovering = true;
       updateBrushCursor();
@@ -206,12 +253,30 @@ class AlgorithmicArtStudio {
 
     window.addEventListener('mousedown', (e) => {
       if (e.target.closest('#hud') || e.target.closest('.modal')) return;
-      this.mouse.isDown = true;
-      updatePointer(e.clientX, e.clientY);
-      updateBrushCursor();
+
+      // Middle Mouse Button Pan (button 1)
+      if (e.button === 1) {
+        e.preventDefault();
+        this.isPanning = true;
+        this.panStartX = e.clientX;
+        this.panStartY = e.clientY;
+        document.body.style.cursor = 'grabbing';
+        return;
+      }
+
+      if (e.button === 0) {
+        this.mouse.isDown = true;
+        updatePointer(e.clientX, e.clientY);
+        updateBrushCursor();
+      }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 1) {
+        this.isPanning = false;
+        document.body.style.cursor = '';
+        return;
+      }
       this.mouse.isDown = false;
       updateBrushCursor();
     });
@@ -219,28 +284,40 @@ class AlgorithmicArtStudio {
     window.addEventListener('mouseleave', () => {
       this.mouse.isHovering = false;
       this.mouse.isDown = false;
+      this.isPanning = false;
+      document.body.style.cursor = '';
       updateBrushCursor();
     });
 
-    // Mouse Wheel Zoom (Clamped 0.5x to 5.0x)
+    window.addEventListener('auxclick', (e) => {
+      if (e.button === 1) {
+        e.preventDefault();
+      }
+    });
+
+    // Mouse Wheel Zoom (Clamped 0.5x to 5.0x, focalized on mouse cursor)
     window.addEventListener('wheel', (e) => {
       if (e.target.closest('#control-drawer') || e.target.closest('.modal-card') || e.target.closest('.top-bar') || e.target.closest('.modal')) {
         return;
       }
       e.preventDefault();
       const factor = Math.exp(-e.deltaY * 0.0015);
-      this.setZoom(this.zoom * factor);
+      this.setZoom(this.zoom * factor, e.clientX, e.clientY);
+      updatePointer(e.clientX, e.clientY);
+      updateBrushCursor();
     }, { passive: false });
 
-    // Touch Gestures: Multi-Touch, Pinch-to-Zoom, Double-Tap & Painting
+    // Touch Gestures: Multi-Touch, Pinch-to-Zoom, Two-Finger Pan, Double-Tap & Painting
     let lastTapTime = 0;
     let lastTapX = 0;
     let lastTapY = 0;
     let twoFingerStart = 0;
     let isTouchActiveOnCanvas = false;
-    let initialPinchDist = 0;
-    let initialPinchZoom = 1.0;
-    let isPinching = false;
+    let lastTwoTouchDist = 0;
+    let lastTwoTouchMidX = 0;
+    let lastTwoTouchMidY = 0;
+    let twoFingerMoved = false;
+    let isTwoFingerGesture = false;
 
     window.addEventListener('touchstart', (e) => {
       if (e.target.closest('#hud') || e.target.closest('.modal')) {
@@ -253,15 +330,17 @@ class AlgorithmicArtStudio {
         e.preventDefault(); // Prevents iOS magnifying glass, text callouts, and premature touchcancel
       }
 
-      // Two-finger gesture start (Pinch-to-Zoom or Two-Finger Tap)
+      // Two-finger gesture start (Pinch-to-Zoom, Two-Finger Pan, or Two-Finger Tap)
       if (e.touches.length === 2) {
         twoFingerStart = performance.now();
-        initialPinchDist = Math.hypot(
+        lastTwoTouchDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
-        initialPinchZoom = this.zoom;
-        isPinching = false;
+        lastTwoTouchMidX = (e.touches[0].clientX + e.touches[1].clientX) * 0.5;
+        lastTwoTouchMidY = (e.touches[0].clientY + e.touches[1].clientY) * 0.5;
+        twoFingerMoved = false;
+        isTwoFingerGesture = true;
         this.mouse.isDown = false;
         this.mouse.isHovering = false;
         updateBrushCursor();
@@ -269,6 +348,8 @@ class AlgorithmicArtStudio {
       }
 
       if (e.touches.length === 1) {
+        isTwoFingerGesture = false;
+        twoFingerMoved = false;
         const touch = e.touches[0];
         const now = performance.now();
         const dist = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
@@ -304,23 +385,42 @@ class AlgorithmicArtStudio {
         e.preventDefault(); // Prevents mobile browser scrolling or gesture hijacking while painting/zooming
       }
 
-      // Pinch-to-zoom with 2 fingers
-      if (e.touches.length === 2 && initialPinchDist > 0) {
-        const currentDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        if (!isPinching && Math.abs(currentDist - initialPinchDist) > 10) {
-          isPinching = true;
+      // Two-finger gesture: simultaneous Pinch-to-Zoom and Two-Finger Pan
+      if (e.touches.length === 2) {
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+        const midX = (t0.clientX + t1.clientX) * 0.5;
+        const midY = (t0.clientY + t1.clientY) * 0.5;
+
+        const dDist = Math.abs(dist - lastTwoTouchDist);
+        const dPan = Math.hypot(midX - lastTwoTouchMidX, midY - lastTwoTouchMidY);
+
+        if (!twoFingerMoved && (dDist > 6 || dPan > 6)) {
+          twoFingerMoved = true;
         }
-        if (isPinching) {
-          const ratio = currentDist / initialPinchDist;
-          this.setZoom(initialPinchZoom * ratio);
+
+        if (twoFingerMoved) {
+          // 1. Two-finger Pan: shift camera by midpoint movement
+          const dx = midX - lastTwoTouchMidX;
+          const dy = midY - lastTwoTouchMidY;
+          const z = this.zoom || 1.0;
+          this.camera.x -= dx / z;
+          this.camera.y -= dy / z;
+          lastTwoTouchMidX = midX;
+          lastTwoTouchMidY = midY;
+
+          // 2. Pinch Zoom with focal point anchored at touch midpoint
+          if (lastTwoTouchDist > 0 && Math.abs(dist - lastTwoTouchDist) > 0.5) {
+            const scaleFactor = dist / lastTwoTouchDist;
+            this.setZoom(this.zoom * scaleFactor, midX, midY);
+            lastTwoTouchDist = dist;
+          }
         }
         return;
       }
 
-      if (e.touches.length === 1 && !isPinching) {
+      if (e.touches.length === 1 && !isTwoFingerGesture) {
         const touch = e.touches[0];
         this.mouse.isDown = true;
         this.mouse.isHovering = true;
@@ -334,14 +434,15 @@ class AlgorithmicArtStudio {
         e.preventDefault();
       }
 
-      // Check if two-finger tap just completed (<350ms) without pinching
+      // Check if two-finger tap just completed (<350ms) without pinching or panning
       if (twoFingerStart > 0 && e.touches.length === 0) {
         const duration = performance.now() - twoFingerStart;
-        const wasPinch = isPinching;
+        const wasMoved = twoFingerMoved;
         twoFingerStart = 0;
-        initialPinchDist = 0;
-        isPinching = false;
-        if (!wasPinch && duration < 350 && this.controls) {
+        lastTwoTouchDist = 0;
+        isTwoFingerGesture = false;
+        twoFingerMoved = false;
+        if (!wasMoved && duration < 350 && this.controls) {
           this.controls.togglePlayPause();
           this.mouse.isDown = false;
           this.mouse.isHovering = false;
@@ -354,13 +455,13 @@ class AlgorithmicArtStudio {
         this.mouse.isDown = false;
         this.mouse.isHovering = false;
         isTouchActiveOnCanvas = false;
-        isPinching = false;
-        initialPinchDist = 0;
+        isTwoFingerGesture = false;
+        twoFingerMoved = false;
+        lastTwoTouchDist = 0;
         updateBrushCursor();
       } else if (e.touches.length === 1) {
-        if (isPinching) {
-          isPinching = false;
-          initialPinchDist = 0;
+        if (isTwoFingerGesture || twoFingerMoved) {
+          // Transitioning from 2 fingers to 1 finger: ignore painting to prevent accidental spawn/drag
           this.mouse.isDown = false;
           this.mouse.isHovering = false;
           updateBrushCursor();
@@ -379,8 +480,9 @@ class AlgorithmicArtStudio {
       this.mouse.isHovering = false;
       isTouchActiveOnCanvas = false;
       twoFingerStart = 0;
-      isPinching = false;
-      initialPinchDist = 0;
+      isTwoFingerGesture = false;
+      twoFingerMoved = false;
+      lastTwoTouchDist = 0;
       updateBrushCursor();
     });
   }

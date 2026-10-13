@@ -65,7 +65,12 @@ class Terrain3DMode {
     const cellSpacing = 32;
     const totalD = rows * cellSpacing;
 
-    const fov = p.cameraFov * (this.app.zoom || 1.0);
+    const z = this.app.zoom || 1.0;
+    const fov = p.cameraFov * z;
+    const halfW = w * 0.5;
+    const halfH = h * 0.5;
+    const camOffsetX = (halfW - (this.app.camera ? this.app.camera.x : halfW)) * z;
+    const camOffsetY = (halfH - (this.app.camera ? this.app.camera.y : halfH)) * z;
     const pitch = p.cameraPitch;
     const cosPitch = Math.cos(pitch);
     const sinPitch = Math.sin(pitch);
@@ -108,8 +113,8 @@ class Terrain3DMode {
         const rz = (worldY - camY) * sinPitch + (rotatedZ - camZ) * cosPitch;
 
         if (rz > 15) {
-          const screenX = w / 2 + (rx * fov) / rz;
-          const screenY = h / 2 + (ry * fov) / rz + 60;
+          const screenX = halfW + (rx * fov) / rz + camOffsetX;
+          const screenY = halfH + (ry * fov) / rz + 60 + camOffsetY;
           const depthRatio = Math.max(0, Math.min(1, rz / (totalD * 1.5)));
 
           rowPoints.push({ x: screenX, y: screenY, z: rz, depth: depthRatio });

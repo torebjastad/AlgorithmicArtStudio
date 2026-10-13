@@ -55,16 +55,18 @@ class TopographicMode {
 
     const scale = p.noiseScale ?? p.scale ?? 0.004;
     const z = this.app.zoom || 1.0;
-    const cx = w * 0.5;
-    const cy = h * 0.5;
+    const halfW = w * 0.5;
+    const halfH = h * 0.5;
+    const camX = this.app.camera ? this.app.camera.x : halfW;
+    const camY = this.app.camera ? this.app.camera.y : halfH;
 
-    // Fill heightmap grid using camera zoom sampling (native screen resolution)
+    // Fill heightmap grid using camera zoom and pan sampling (native screen resolution)
     for (let j = 0; j <= rows; j++) {
       for (let i = 0; i <= cols; i++) {
         const screenX = i * cellW;
         const screenY = j * cellH;
-        const worldX = cx + (screenX - cx) / z;
-        const worldY = cy + (screenY - cy) / z;
+        const worldX = camX + (screenX - halfW) / z;
+        const worldY = camY + (screenY - halfH) / z;
         const val = noise.fbm3D(worldX * scale, worldY * scale, zTime, p.octaves, p.lacunarity, p.persistence);
         // Normalize to [0, 1]
         this.grid[j * this.gridW + i] = val * 0.5 + 0.5;

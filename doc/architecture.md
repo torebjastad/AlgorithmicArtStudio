@@ -94,31 +94,41 @@ animate(now) {
 
 ---
 
-## Native Camera Zoom & Coordinate Transformation Engine
+## Native Camera Zoom, Focal Anchoring & Panning Engine
 
-To eliminate boundary discontinuities and inspect fine fractal vortices **without losing resolution**, the studio features a true **camera projection zoom pipeline** instead of post-render CSS bitmap scaling:
+To eliminate boundary discontinuities and inspect fine fractal vortices **without losing resolution**, the studio features a true **camera projection and panning pipeline** instead of post-render CSS bitmap scaling:
 
 1. **Zero Resolution Loss (Native Framebuffer Rasterization)**:
    - Canvases remain 1:1 with screen pixels (`transform: none`). No CSS canvas magnification is applied, eliminating blurriness, pixelation, or fat stroke artifacts.
-   - **GPU Particles (`gpu-particles.js`)**: The instanced ribbon quad vertex shader applies a camera projection from the viewport center:
-     $$\text{projPos} = \text{center} + (\text{pos} - \text{center}) \times u\_zoom$$
+   - **GPU Particles (`gpu-particles.js`)**: The instanced ribbon quad vertex shader applies camera projection relative to world camera position $(cx, cy)$:
+     $$\text{projPos} = \frac{W}{2} + (\text{pos} - \text{camera}) \times u\_zoom$$
      Particles are rasterized directly onto the native framebuffer at physical display resolution with analytic Gaussian sub-pixel anti-aliasing.
-   - **Domain Warp (`domain-warp.js`)**: Evaluates the procedural multi-tier fBm equations per-fragment at `(u_scale / u_zoom)` with infinite mathematical precision.
-   - **Flow Fields (`flow-fields.js`)**: Batch-draws particle vectors projected by camera zoom onto the native high-DPI canvas buffer with crisp 1:1 line widths.
-   - **Topography, 3D Terrain & Ribbons**: Heightmaps and 3D camera FOV scale smoothly with camera zoom.
+   - **Domain Warp (`domain-warp.js`)**: Evaluates the procedural multi-tier fBm equations per-fragment with camera center offset:
+     $$\text{st} = \frac{\text{gl\_FragCoord} - \text{u\_cameraCenter}}{\min(W, H)} \times \frac{u\_scale}{u\_zoom}$$
+   - **Flow Fields (`flow-fields.js`)**: Batch-draws particle vectors projected by camera position and zoom onto the native high-DPI canvas buffer with crisp 1:1 line widths.
+   - **Topography, 3D Terrain & Ribbons**: Heightmaps, ribbons, and 3D camera FOV project and sample directly relative to camera world position.
    - **Never Decay Protection**: When `fadeRate <= 0.00001`, changing zoom refreshes the canvas buffer so the new cropped camera view accumulates cleanly.
 
 2. **Inverse Coordinate Mapping**:
-   When the camera zoom is $Z$, screen coordinates $(s_x, s_y)$ relative to screen center $(c_x, c_y)$ map to simulation space coordinates $(p_x, p_y)$:
-   $$p_x = c_x + \frac{s_x - c_x}{Z}, \quad p_y = c_y + \frac{s_y - c_y}{Z}$$
-   - Applied inside `updatePointer()` so all generative physics forces, hover tracking, and particle brush painting spawn precisely underneath the user's cursor or finger.
+   When the camera world center is $(cx, cy)$ and zoom is $Z$, screen coordinates $(s_x, s_y)$ map to world simulation coordinates $(p_x, p_y)$:
+   $$p_x = cx + \frac{s_x - W/2}{Z}, \quad p_y = cy + \frac{s_y - H/2}{Z}$$
+   - Applied inside `updatePointer()` so all generative physics forces, hover tracking, and particle brush painting spawn precisely underneath the user's cursor or finger at any pan offset and zoom level.
    - Brush cursor ring diameter scales by $D \times Z$ in screen space to perfectly match the painted area.
 
-3. **Input Modalities**:
-   - **Desktop Mouse Wheel**: Smooth exponential damping: $\text{factor} = e^{-\Delta y \cdot 0.0015}$. Ignored when scrolling over HUD drawers or modal dialogs.
-   - **Touch Pinch**: Tracks two-touch distance $\sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2}$ and applies the scale ratio directly to `initialPinchZoom`. Disambiguates cleanly from two-finger tap (Play/Pause).
-   - **Instant Reset**: Press <kbd>0</kbd> on desktop, click the top HUD `ZOOM` pill, click mobile drawer stats pill, or tap the floating badge `#floating-zoom-badge` to reset to `100%` (1.0x).
-   - **Native Art Export**: Exporter captures the active cropped view directly at full master resolution.
+3. **Focal Zoom (Cursor / Touch Midpoint Anchoring)**:
+   When zooming towards a focal point $(f_x, f_y)$ on screen (mouse cursor or pinch midpoint), the camera center updates such that the world point under the focal point remains invariant:
+   $$cx_{\text{new}} = cx_{\text{old}} + (f_x - W/2) \times \left(\frac{1}{Z_{\text{old}}} - \frac{1}{Z_{\text{new}}}\right)$$
+   $$cy_{\text{new}} = cy_{\text{old}} + (f_y - H/2) \times \left(\frac{1}{Z_{\text{old}}} - \frac{1}{Z_{\text{new}}}\right)$$
+
+4. **Panning Mechanics**:
+   - **Desktop Middle Mouse Button**: Pressing <kbd>Middle Click</kbd> (`e.button === 1`) and dragging pans the camera in real time:
+     $$cx \leftarrow cx - \frac{\Delta s_x}{Z}, \quad cy \leftarrow cy - \frac{\Delta s_y}{Z}$$
+   - **Mobile Two-Finger Drag**: Dragging with two fingers smoothly translates the camera while tracking the midpoint of both touches.
+   - **Simultaneous Pan & Pinch**: Touch gestures continuously update both zoom (via finger distance) and camera pan (via midpoint delta) in parallel without jitter.
+   - **Gesture Disambiguation**: Two-finger tap (<350ms without drag) toggles Play/Pause cleanly without triggering unwanted pan or pinch.
+
+5. **Instant Reset**:
+   Press <kbd>0</kbd> on desktop, click the top HUD `ZOOM` pill, click mobile drawer stats pill, or tap `#floating-zoom-badge` to reset camera position to center $(W/2, H/2)$ and zoom to `100%` (1.0x).
 
 ---
 

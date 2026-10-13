@@ -55,6 +55,7 @@ class DomainWarpMode {
       in vec2 v_uv;
 
       uniform vec2 u_resolution;
+      uniform vec2 u_cameraCenter;
       uniform float u_time;
       uniform vec2 u_mouse;
       uniform float u_mouseInfluence;
@@ -127,11 +128,11 @@ class DomainWarpMode {
       }
 
       void main() {
-        vec2 st = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+        vec2 st = (gl_FragCoord.xy - u_cameraCenter) / min(u_resolution.x, u_resolution.y);
         st *= (u_scale / max(0.01, u_zoom));
 
         // Mouse interactive swirl & ripple
-        vec2 m = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y) * (u_scale / max(0.01, u_zoom));
+        vec2 m = (u_mouse - u_cameraCenter) / min(u_resolution.x, u_resolution.y) * (u_scale / max(0.01, u_zoom));
         float mDist = length(st - m);
         if (mDist < 1.8 && u_mouseInfluence > 0.01) {
           vec2 toMouse = st - m;
@@ -177,6 +178,7 @@ class DomainWarpMode {
       varying vec2 v_uv;
 
       uniform vec2 u_resolution;
+      uniform vec2 u_cameraCenter;
       uniform float u_time;
       uniform vec2 u_mouse;
       uniform float u_mouseInfluence;
@@ -245,10 +247,10 @@ class DomainWarpMode {
       }
 
       void main() {
-        vec2 st = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+        vec2 st = (gl_FragCoord.xy - u_cameraCenter) / min(u_resolution.x, u_resolution.y);
         st *= (u_scale / max(0.01, u_zoom));
 
-        vec2 m = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y) * (u_scale / max(0.01, u_zoom));
+        vec2 m = (u_mouse - u_cameraCenter) / min(u_resolution.x, u_resolution.y) * (u_scale / max(0.01, u_zoom));
         float mDist = length(st - m);
         if (mDist < 1.8 && u_mouseInfluence > 0.01) {
           vec2 toMouse = st - m;
@@ -309,8 +311,12 @@ class DomainWarpMode {
     const mouse = this.app.mouse;
     const mouseInf = (p.enableMouseDistortion) ? (mouse.isDown ? p.mouseInfluence * 2.0 : (mouse.isHovering ? p.mouseInfluence : 0.0)) : 0.0;
 
+    const camX = this.app.camera ? this.app.camera.x : (this.app.width * 0.5);
+    const camY = this.app.camera ? this.app.camera.y : (this.app.height * 0.5);
+
     glRenderer.renderFullscreenQuad(this.programName, {
       u_resolution: [glRenderer.canvas.width, glRenderer.canvas.height],
+      u_cameraCenter: [camX * glRenderer.dpr, (this.app.height - camY) * glRenderer.dpr],
       u_time: this.fieldTime || 0.0,
       u_mouse: [mouse.x * glRenderer.dpr, (this.app.height - mouse.y) * glRenderer.dpr],
       u_mouseInfluence: mouseInf,
@@ -354,6 +360,7 @@ class DomainWarpMode {
 
     offRenderer.renderFullscreenQuad(this.programName, {
       u_resolution: [width, height],
+      u_cameraCenter: [width * 0.5, height * 0.5],
       u_time: this.app.time * p.timeSpeed,
       u_mouse: [0, 0],
       u_mouseInfluence: 0.0,

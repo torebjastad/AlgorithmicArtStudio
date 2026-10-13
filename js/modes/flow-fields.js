@@ -298,8 +298,10 @@ class FlowFieldMode {
     ctx.lineJoin = (p.particleShape === 'flat') ? 'miter' : 'round';
 
     const z = this.app.zoom || 1.0;
-    const cx = this.app.width * 0.5;
-    const cy = this.app.height * 0.5;
+    const halfW = this.app.width * 0.5;
+    const halfH = this.app.height * 0.5;
+    const camX = this.app.camera ? this.app.camera.x : halfW;
+    const camY = this.app.camera ? this.app.camera.y : halfH;
 
     // Batch draw particle strokes (projected by camera zoom at 100% native resolution)
     for (let i = 0; i < count; i++) {
@@ -323,11 +325,11 @@ class FlowFieldMode {
       let x2 = this.x[i];
       let y2 = this.y[i];
 
-      if (z !== 1.0) {
-        x1 = cx + (x1 - cx) * z;
-        y1 = cy + (y1 - cy) * z;
-        x2 = cx + (x2 - cx) * z;
-        y2 = cy + (y2 - cy) * z;
+      if (z !== 1.0 || camX !== halfW || camY !== halfH) {
+        x1 = halfW + (x1 - camX) * z;
+        y1 = halfH + (y1 - camY) * z;
+        x2 = halfW + (x2 - camX) * z;
+        y2 = halfH + (y2 - camY) * z;
       }
 
       // Skip strokes entirely outside screen bounds

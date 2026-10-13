@@ -69,22 +69,23 @@ When `spawnMode` is set to `pointer`:
 | <kbd>H</kbd> / <kbd>Tab</kbd> | Toggle HUD | Hides/shows the HUD interface for clean fullscreen viewing |
 | <kbd>F</kbd> | Toggle Fullscreen | Enters / exits browser fullscreen mode |
 | <kbd>S</kbd> | Instant Snapshot | Captures high-resolution canvas snapshot |
-| <kbd>0</kbd> | Reset Viewport Zoom | Restores canvas zoom level to 100% (1.0x) |
-| <kbd>Wheel</kbd> / <kbd>Pinch</kbd> | Viewport Zoom | Zooms in/out smoothly between 0.5x and 5.0x |
+| <kbd>0</kbd> | Reset Viewport Zoom & Pan | Restores canvas camera position to center and zoom to 100% (1.0x) |
+| <kbd>Wheel</kbd> / <kbd>Pinch</kbd> | Focal Viewport Zoom | Zooms in/out anchored at mouse cursor or pinch midpoint (0.5x to 5.0x) |
+| <kbd>Middle Drag</kbd> / <kbd>Two-Finger Drag</kbd> | Camera Pan | Smoothly pans the camera across the generative world space |
 
 ---
 
-## 6. Viewport Zoom & Inspection Controls
+## 6. Viewport Zoom, Focal Anchoring & Camera Panning
 
-The studio provides real-time **native camera zoom** to hide boundary discontinuities or inspect fine fractal vortices **without losing resolution**:
+The studio provides real-time **native camera zoom and panning** to explore intricate fractal details and hide boundary discontinuities **without losing resolution**:
 
-- **Native Resolution Rasterization**: Instead of scaling the rendered canvas bitmap via CSS (which causes pixel blur and fat strokes), zoom adjusts the camera projection directly in shaders and renderers. The canvas remains 1:1 with device pixels, keeping anti-aliasing razor-sharp and line widths delicate.
-- **Desktop Mouse Wheel**: Rolling the mouse wheel over the canvas zooms in and out continuously with smooth exponential damping ($e^{-\Delta y \cdot 0.0015}$). Wheel events over HUD controls and modals are preserved for native scrolling.
-- **Mobile Pinch-to-Zoom**: Pinching two fingers expands or shrinks the viewport smoothly. Disambiguated cleanly from two-finger tap (Play/Pause).
-- **HUD Zoom Indicator (`#btn-zoom-reset`)**: Displays the active zoom percentage (`100%`, `125%`, etc.) in the top stats bar. Clicking resets zoom to `100%`.
-- **Mobile Drawer Indicator (`#btn-zoom-reset-mobile`)**: Compact pill in the drawer header with one-tap reset.
-- **Floating Badge (`#floating-zoom-badge`)**: Appears dynamically on screen when zooming (even in Zen Mode with HUD hidden) and fades away after 1.2s. Tapping it resets zoom to `100%`.
-- **Brush Alignment**: Mouse pointer brush cursor circle automatically resizes to reflect the magnified painting area, and inverse transforms guarantee particles spawn precisely under the cursor.
+- **Native Resolution Rasterization**: Instead of scaling the rendered canvas bitmap via CSS (which causes pixel blur and fat strokes), zoom and pan adjust the camera projection directly in shaders and renderers. The canvas remains 1:1 with device pixels, keeping anti-aliasing razor-sharp and line widths delicate.
+- **Focal Cursor Zoom**: Rolling the mouse wheel zooms towards the exact cursor position `(e.clientX, e.clientY)`. The world coordinates directly under the cursor remain perfectly stationary during zoom.
+- **Middle Mouse Button Pan**: Holding down the middle mouse button and dragging moves the camera smoothly across the artwork, with direct 1:1 manipulation at any zoom level.
+- **Mobile Multi-Touch (Two-Finger Pan & Pinch)**: Pinching with two fingers zooms towards the touch midpoint, while dragging with two fingers smoothly pans the view. Both gestures work simultaneously and naturally.
+- **Gesture Disambiguation**: Two-finger tap (<350ms without drag or pinch) toggles Play/Pause cleanly.
+- **HUD & Mobile Reset Indicators (`#btn-zoom-reset`, `#btn-zoom-reset-mobile`, `#floating-zoom-badge`)**: Displays active zoom percentage. Clicking any indicator or pressing <kbd>0</kbd> instantly resets both camera pan and zoom back to 100% center view.
+- **Brush Alignment**: Mouse pointer brush cursor circle automatically resizes to reflect the magnified painting area, and inverse camera projection guarantees particles spawn precisely under the cursor or finger regardless of pan offset or zoom level.
 
 ---
 

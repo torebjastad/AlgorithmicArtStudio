@@ -401,6 +401,7 @@ class GPUParticlesMode {
       uniform sampler2D u_velSeedTex;
 
       uniform vec2 u_resolution;
+      uniform vec2 u_cameraCenter;
       uniform float u_zoom;
       uniform float u_strokeWidth;
       uniform float u_streakLength;
@@ -464,10 +465,9 @@ class GPUParticlesMode {
 
         float radius = max(0.4, u_strokeWidth * 0.5 * sizeVar) * widthMultiplier;
 
-        // Camera zoom projection into the particles (crops to center, keeping 100% native resolution)
-        vec2 center = u_resolution * 0.5;
-        vec2 projPos = center + (pos - center) * u_zoom;
-        vec2 projPrevPos = center + (prevPos - center) * u_zoom;
+        // Camera zoom projection into the particles (crops to camera center, keeping 100% native resolution)
+        vec2 projPos = u_resolution * 0.5 + (pos - u_cameraCenter) * u_zoom;
+        vec2 projPrevPos = u_resolution * 0.5 + (prevPos - u_cameraCenter) * u_zoom;
         vec2 projDir = projPos - projPrevPos;
         float projLen = length(projDir);
         vec2 uDir = (projLen > 0.0001) ? projDir / projLen : vec2(1.0, 0.0);
@@ -857,6 +857,9 @@ class GPUParticlesMode {
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_velSeedTex'), 1);
 
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
+    const camX = this.app.camera ? this.app.camera.x : (this.app.width * 0.5);
+    const camY = this.app.camera ? this.app.camera.y : (this.app.height * 0.5);
+    gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_cameraCenter'), camX, camY);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_zoom'), this.app.zoom || 1.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_strokeWidth'), p.strokeWidth);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_streakLength'), p.streakLength || 1.0);

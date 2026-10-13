@@ -235,7 +235,7 @@ test('Mobile & Tablet Responsive Adaptations', async (t) => {
     assert.equal(dummyDOM.valZoom.textContent, '100%');
   });
 
-  await t.test('Generative modes implement native camera zoom projection', () => {
+  await t.test('Generative modes implement native camera zoom and pan projection', () => {
     const gpuPath = path.join(__dirname, '..', 'js', 'modes', 'gpu-particles.js');
     const gpuCode = fs.readFileSync(gpuPath, 'utf8');
     const warpPath = path.join(__dirname, '..', 'js', 'modes', 'domain-warp.js');
@@ -245,60 +245,113 @@ test('Mobile & Tablet Responsive Adaptations', async (t) => {
 
     // GPU Particles
     assert.ok(gpuCode.includes('uniform float u_zoom;'), 'gpu-particles render vertex shader must declare u_zoom');
-    assert.ok(gpuCode.includes('projPos = center + (pos - center) * u_zoom;'), 'gpu-particles must project particles with camera zoom');
-    assert.ok(gpuCode.includes('u_zoom'), 'gpu-particles must pass u_zoom uniform');
+    assert.ok(gpuCode.includes('uniform vec2 u_cameraCenter;'), 'gpu-particles render vertex shader must declare u_cameraCenter');
+    assert.ok(gpuCode.includes('projPos = u_resolution * 0.5 + (pos - u_cameraCenter) * u_zoom;'), 'gpu-particles must project particles with camera zoom and pan');
+    assert.ok(gpuCode.includes('u_cameraCenter'), 'gpu-particles must pass u_cameraCenter uniform');
 
     // Domain Warp
     assert.ok(warpCode.includes('uniform float u_zoom;'), 'domain-warp shader must declare u_zoom');
+    assert.ok(warpCode.includes('uniform vec2 u_cameraCenter;'), 'domain-warp shader must declare u_cameraCenter');
+    assert.ok(warpCode.includes('(gl_FragCoord.xy - u_cameraCenter)'), 'domain-warp must offset fragment coordinates by u_cameraCenter');
     assert.ok(warpCode.includes('(u_scale / max(0.01, u_zoom))'), 'domain-warp must scale coordinate sampling by u_zoom');
 
     // Flow Fields
-    assert.ok(flowCode.includes('x1 = cx + (x1 - cx) * z;'), 'flow-fields must project particle strokes with camera zoom');
+    assert.ok(flowCode.includes('x1 = halfW + (x1 - camX) * z;'), 'flow-fields must project particle strokes with camera zoom and pan');
   });
 
-  await t.test('Pointer coordinate mapping accurately inverts container zoom', () => {
+  await t.test('Pointer coordinate mapping accurately inverts camera zoom and pan', () => {
     const width = 1200;
     const height = 800;
-    const cx = width / 2; // 600
-    const cy = height / 2; // 400
+    const halfW = width / 2; // 600
+    const halfH = height / 2; // 400
 
-    const transformPointer = (screenX, screenY, zoom) => {
+    const transformPointer = (screenX, screenY, zoom, camX = halfW, camY = halfH) => {
       return {
-        x: cx + (screenX - cx) / zoom,
-        y: cy + (screenY - cy) / zoom
+        x: camX + (screenX - halfW) / zoom,
+        y: camY + (screenY - halfH) / zoom
       };
     };
 
-    // At 1.0x, screen coords match canvas coords exactly
+    // At 1.0x unpanned, screen coords match world coords exactly
     const p1 = transformPointer(700, 500, 1.0);
     assert.equal(p1.x, 700);
     assert.equal(p1.y, 500);
 
-    // At 2.0x, a point 100px from center on screen is 50px from center on canvas
+    // At 2.0x unpanned, a point 100px right of screen center is 50px right in world space
     const p2 = transformPointer(700, 500, 2.0);
     assert.equal(p2.x, 650);
     assert.equal(p2.y, 450);
 
-    // Center screen always maps to center canvas regardless of zoom
-    const pCenter = transformPointer(cx, cy, 3.5);
-    assert.equal(pCenter.x, cx);
-    assert.equal(pCenter.y, cy);
+    // With camera panned to world point (800, 600), screen center maps directly to camera center
+    const pCenter = transformPointer(halfW, halfH, 2.0, 800, 600);
+    assert.equal(pCenter.x, 800);
+    assert.equal(pCenter.y, 600);
   });
 
-  await t.test('Wheel zoom, pinch gesture, and 0 shortcut are wired up', () => {
+  await t.test('Focal zoom keeps world point under pointer/midpoint invariant', () => {
+    const width = 1200;
+    const height = 800;
+    const halfW = width / 2;
+    const halfH = height / 2;
+
+    let camera = { x: halfW, y: halfH };
+    let zoom = 1.0;
+
+    const focalZoom = (newZoom, focalX, focalY) => {
+      const factor = (1 / zoom) - (1 / newZoom);
+      camera.x += (focalX - halfW) * factor;
+      camera.y += (focalY - halfH) * factor;
+      zoom = newZoom;
+    };
+
+    const getWorldPoint = (screenX, screenY) => ({
+      x: camera.x + (screenX - halfW) / zoom,
+      y: camera.y + (screenY - halfH) / zoom
+    });
+
+    const pointer = { screenX: 850, screenY: 250 };
+    const initialWorld = getWorldPoint(pointer.screenX, pointer.screenY);
+
+    // Zoom in from 1.0x to 2.5x at focal pointer
+    focalZoom(2.5, pointer.screenX, pointer.screenY);
+    const zoomedWorld = getWorldPoint(pointer.screenX, pointer.screenY);
+    assert.ok(Math.abs(zoomedWorld.x - initialWorld.x) < 1e-9, 'World X under focal pointer must be invariant');
+    assert.ok(Math.abs(zoomedWorld.y - initialWorld.y) < 1e-9, 'World Y under focal pointer must be invariant');
+
+    // Zoom in further to 4.0x
+    focalZoom(4.0, pointer.screenX, pointer.screenY);
+    const furtherWorld = getWorldPoint(pointer.screenX, pointer.screenY);
+    assert.ok(Math.abs(furtherWorld.x - initialWorld.x) < 1e-9);
+    assert.ok(Math.abs(furtherWorld.y - initialWorld.y) < 1e-9);
+
+    // Zoom back out to 1.0x at the same focal pointer
+    focalZoom(1.0, pointer.screenX, pointer.screenY);
+    const restoredWorld = getWorldPoint(pointer.screenX, pointer.screenY);
+    assert.ok(Math.abs(restoredWorld.x - initialWorld.x) < 1e-9);
+    assert.ok(Math.abs(camera.x - halfW) < 1e-9, 'Camera should return to center when zoomed back out');
+    assert.ok(Math.abs(camera.y - halfH) < 1e-9);
+  });
+
+  await t.test('Wheel focal zoom, middle-mouse pan, two-finger pan/pinch, and shortcuts are wired up', () => {
     const appPath = path.join(__dirname, '..', 'js', 'app.js');
     const appCode = fs.readFileSync(appPath, 'utf8');
     const controlsPath = path.join(__dirname, '..', 'js', 'ui', 'controls.js');
     const controlsCode = fs.readFileSync(controlsPath, 'utf8');
 
-    // Wheel zoom
-    assert.ok(appCode.includes('window.addEventListener(\'wheel\''), 'app.js must register wheel event listener');
-    assert.ok(appCode.includes('Math.exp(-e.deltaY * 0.0015)'), 'Wheel zoom must use smooth exponential scaling');
+    // Middle-mouse Pan
+    assert.ok(appCode.includes('e.button === 1'), 'app.js must check e.button === 1 for middle mouse button');
+    assert.ok(appCode.includes('this.isPanning = true'), 'Middle mouse mousedown must activate isPanning');
+    assert.ok(appCode.includes('this.camera.x -= dx / z'), 'Panning must translate camera by dx / zoom');
 
-    // Pinch gesture
-    assert.ok(appCode.includes('initialPinchDist = Math.hypot('), 'Pinch zoom must compute initial distance with Math.hypot');
-    assert.ok(appCode.includes('this.setZoom(initialPinchZoom * ratio)'), 'Pinch gesture must dynamically update setZoom');
-    assert.ok(appCode.includes('!wasPinch && duration < 350'), 'Two-finger tap (Play/Pause) must be disambiguated from pinch zoom');
+    // Wheel focal zoom
+    assert.ok(appCode.includes('window.addEventListener(\'wheel\''), 'app.js must register wheel event listener');
+    assert.ok(appCode.includes('this.setZoom(this.zoom * factor, e.clientX, e.clientY)'), 'Wheel zoom must pass mouse cursor coords as focal point');
+
+    // Two-finger pan & pinch gesture
+    assert.ok(appCode.includes('lastTwoTouchDist = Math.hypot('), 'Two-finger gesture must track distance');
+    assert.ok(appCode.includes('this.camera.x -= dx / z'), 'Two-finger pan must shift camera by midpoint delta');
+    assert.ok(appCode.includes('this.setZoom(this.zoom * scaleFactor, midX, midY)'), 'Pinch gesture must dynamically update setZoom at touch midpoint');
+    assert.ok(appCode.includes('!wasMoved && duration < 350'), 'Two-finger tap (Play/Pause) must be disambiguated from pan/pinch');
 
     // Shortcuts and Reset
     assert.ok(controlsCode.includes('e.key === \'0\''), 'controls.js must bind key 0 to reset zoom');
