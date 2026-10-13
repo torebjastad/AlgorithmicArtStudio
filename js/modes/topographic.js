@@ -54,12 +54,18 @@ class TopographicMode {
     const noise = this.app.perlin;
 
     const scale = p.noiseScale ?? p.scale ?? 0.004;
-    // Fill heightmap grid
+    const z = this.app.zoom || 1.0;
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+
+    // Fill heightmap grid using camera zoom sampling (native screen resolution)
     for (let j = 0; j <= rows; j++) {
       for (let i = 0; i <= cols; i++) {
-        const x = i * cellW;
-        const y = j * cellH;
-        const val = noise.fbm3D(x * scale, y * scale, zTime, p.octaves, p.lacunarity, p.persistence);
+        const screenX = i * cellW;
+        const screenY = j * cellH;
+        const worldX = cx + (screenX - cx) / z;
+        const worldY = cy + (screenY - cy) / z;
+        const val = noise.fbm3D(worldX * scale, worldY * scale, zTime, p.octaves, p.lacunarity, p.persistence);
         // Normalize to [0, 1]
         this.grid[j * this.gridW + i] = val * 0.5 + 0.5;
       }

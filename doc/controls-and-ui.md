@@ -76,8 +76,9 @@ When `spawnMode` is set to `pointer`:
 
 ## 6. Viewport Zoom & Inspection Controls
 
-The studio provides real-time viewport zooming to hide edge discontinuities caused by initial boundary spawning or inspect fine fractal vortices:
+The studio provides real-time **native camera zoom** to hide boundary discontinuities or inspect fine fractal vortices **without losing resolution**:
 
+- **Native Resolution Rasterization**: Instead of scaling the rendered canvas bitmap via CSS (which causes pixel blur and fat strokes), zoom adjusts the camera projection directly in shaders and renderers. The canvas remains 1:1 with device pixels, keeping anti-aliasing razor-sharp and line widths delicate.
 - **Desktop Mouse Wheel**: Rolling the mouse wheel over the canvas zooms in and out continuously with smooth exponential damping ($e^{-\Delta y \cdot 0.0015}$). Wheel events over HUD controls and modals are preserved for native scrolling.
 - **Mobile Pinch-to-Zoom**: Pinching two fingers expands or shrinks the viewport smoothly. Disambiguated cleanly from two-finger tap (Play/Pause).
 - **HUD Zoom Indicator (`#btn-zoom-reset`)**: Displays the active zoom percentage (`100%`, `125%`, etc.) in the top stats bar. Clicking resets zoom to `100%`.
@@ -87,7 +88,7 @@ The studio provides real-time viewport zooming to hide edge discontinuities caus
 
 ---
 
-## 6. Randomization Calibration (`randomizeParameters()`)
+## 7. Randomization Calibration (`randomizeParameters()`)
 
 The random dice button (<kbd>R</kbd>) avoids chaotic unusable parameter combinations by utilizing calibrated aesthetic distributions:
 - **Particle Velocity**: Biased heavily toward pleasant speeds ($0.08$–$0.45$), rarely selecting above $1.0$.
@@ -96,7 +97,7 @@ The random dice button (<kbd>R</kbd>) avoids chaotic unusable parameter combinat
 
 ---
 
-## 7. Mobile & Tablet UI Adaptations
+## 8. Mobile & Tablet UI Adaptations
 
 ### Bottom Sheet Architecture (`<= 768px`)
 - **Three Interaction States**:

@@ -65,7 +65,7 @@ class Terrain3DMode {
     const cellSpacing = 32;
     const totalD = rows * cellSpacing;
 
-    const fov = p.cameraFov;
+    const fov = p.cameraFov * (this.app.zoom || 1.0);
     const pitch = p.cameraPitch;
     const cosPitch = Math.cos(pitch);
     const sinPitch = Math.sin(pitch);

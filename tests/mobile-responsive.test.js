@@ -178,19 +178,17 @@ test('Mobile & Tablet Responsive Adaptations', async (t) => {
     assert.ok(html.includes('id="val-zoom-mobile"'), 'HTML must include #val-zoom-mobile');
     assert.ok(html.includes('id="val-zoom-floating"'), 'HTML must include #val-zoom-floating');
 
-    assert.ok(css.includes('transform-origin: center center;'), 'Canvas container must scale from center center');
-    assert.ok(css.includes('will-change: transform;'), 'Canvas container must hint transform optimization');
     assert.ok(css.includes('.floating-zoom-badge'), 'CSS must define floating zoom badge styles');
     assert.ok(css.includes('.clickable-pill'), 'CSS must define clickable pill hover and active states');
   });
 
-  await t.test('AlgorithmicArtStudio setZoom clamps zoom level and updates DOM indicators', () => {
+  await t.test('AlgorithmicArtStudio setZoom clamps zoom level, preserves native resolution, and updates DOM indicators', () => {
     const appPath = path.join(__dirname, '..', 'js', 'app.js');
     const appCode = fs.readFileSync(appPath, 'utf8');
 
     assert.ok(appCode.includes('this.zoom = 1.0;'), 'app must initialize zoom to 1.0');
     assert.ok(appCode.includes('Math.max(0.5, Math.min(5.0, zoomLevel))'), 'setZoom must clamp between 0.5x and 5.0x');
-    assert.ok(appCode.includes('container.style.transform = `scale(${this.zoom})`'), 'setZoom must apply scale transform to container');
+    assert.ok(appCode.includes('container.style.transform = \'\''), 'setZoom must keep container unscaled to preserve 100% native resolution');
 
     // Simulate setZoom method logic directly
     const dummyDOM = {
@@ -207,7 +205,7 @@ test('Mobile & Tablet Responsive Adaptations', async (t) => {
       setZoom(zoomLevel) {
         const clamped = Math.max(0.5, Math.min(5.0, zoomLevel));
         this.zoom = Math.round(clamped * 100) / 100;
-        dummyDOM.container.style.transform = `scale(${this.zoom})`;
+        dummyDOM.container.style.transform = '';
         const percentText = `${Math.round(this.zoom * 100)}%`;
         dummyDOM.valZoom.textContent = percentText;
         dummyDOM.valZoomMobile.textContent = percentText;
@@ -218,7 +216,7 @@ test('Mobile & Tablet Responsive Adaptations', async (t) => {
     // Test normal zoom
     mockApp.setZoom(1.25);
     assert.equal(mockApp.zoom, 1.25);
-    assert.equal(dummyDOM.container.style.transform, 'scale(1.25)');
+    assert.equal(dummyDOM.container.style.transform, '');
     assert.equal(dummyDOM.valZoom.textContent, '125%');
 
     // Test minimum clamping
@@ -235,6 +233,27 @@ test('Mobile & Tablet Responsive Adaptations', async (t) => {
     mockApp.setZoom(1.0);
     assert.equal(mockApp.zoom, 1.0);
     assert.equal(dummyDOM.valZoom.textContent, '100%');
+  });
+
+  await t.test('Generative modes implement native camera zoom projection', () => {
+    const gpuPath = path.join(__dirname, '..', 'js', 'modes', 'gpu-particles.js');
+    const gpuCode = fs.readFileSync(gpuPath, 'utf8');
+    const warpPath = path.join(__dirname, '..', 'js', 'modes', 'domain-warp.js');
+    const warpCode = fs.readFileSync(warpPath, 'utf8');
+    const flowPath = path.join(__dirname, '..', 'js', 'modes', 'flow-fields.js');
+    const flowCode = fs.readFileSync(flowPath, 'utf8');
+
+    // GPU Particles
+    assert.ok(gpuCode.includes('uniform float u_zoom;'), 'gpu-particles render vertex shader must declare u_zoom');
+    assert.ok(gpuCode.includes('projPos = center + (pos - center) * u_zoom;'), 'gpu-particles must project particles with camera zoom');
+    assert.ok(gpuCode.includes('u_zoom'), 'gpu-particles must pass u_zoom uniform');
+
+    // Domain Warp
+    assert.ok(warpCode.includes('uniform float u_zoom;'), 'domain-warp shader must declare u_zoom');
+    assert.ok(warpCode.includes('(u_scale / max(0.01, u_zoom))'), 'domain-warp must scale coordinate sampling by u_zoom');
+
+    // Flow Fields
+    assert.ok(flowCode.includes('x1 = cx + (x1 - cx) * z;'), 'flow-fields must project particle strokes with camera zoom');
   });
 
   await t.test('Pointer coordinate mapping accurately inverts container zoom', () => {

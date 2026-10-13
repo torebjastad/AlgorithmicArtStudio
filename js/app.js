@@ -112,11 +112,19 @@ class AlgorithmicArtStudio {
 
   setZoom(zoomLevel) {
     const clamped = Math.max(0.5, Math.min(5.0, zoomLevel));
+    const prevZoom = this.zoom;
     this.zoom = Math.round(clamped * 100) / 100;
 
+    // Keep canvas container 1:1 with screen pixels for full native resolution (no bitmap stretching)
     const container = document.getElementById('canvas-container');
-    if (container) {
-      container.style.transform = `scale(${this.zoom})`;
+    if (container && container.style.transform) {
+      container.style.transform = '';
+    }
+
+    // In Never Decay mode (infinite trail persistence), clear canvas on zoom change
+    // so the new camera crop accumulates cleanly without old unzoomed artifacts
+    if (prevZoom !== this.zoom && this.currentMode?.params?.fadeRate <= 0.00001) {
+      this.resetCurrentMode();
     }
 
     const percentText = `${Math.round(this.zoom * 100)}%`;

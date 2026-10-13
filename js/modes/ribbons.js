@@ -38,6 +38,10 @@ class RibbonsMode {
 
     this.cachedRibbons = [];
 
+    const z = this.app.zoom || 1.0;
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+
     for (let r = 0; r < p.ribbonCount; r++) {
       const ribbonT = r / Math.max(1, p.ribbonCount - 1);
       const baseY = (ribbonT * 0.7 + 0.15) * h;
@@ -47,14 +51,15 @@ class RibbonsMode {
       for (let s = 0; s <= p.segments; s++) {
         const segT = s / p.segments;
         const x = segT * (w + 100) - 50;
+        const worldX = cx + (x - cx) / z;
 
-        const nx = x * scale;
+        const nx = worldX * scale;
         const ny = (baseY + r * 10) * scale;
 
-        const displacement = noise.fbm3D(nx, ny, zTime + r * 0.1, p.octaves, p.lacunarity, p.persistence) * p.amplitude;
+        const displacement = noise.fbm3D(nx, ny, zTime + r * 0.1, p.octaves, p.lacunarity, p.persistence) * p.amplitude * z;
         const widthMod = Math.sin(segT * Math.PI) * p.ribbonWidth * (0.5 + 0.5 * Math.sin(segT * 10 + time * 0.005));
 
-        const yCenter = baseY + displacement;
+        const yCenter = cy + (baseY - cy) * z + displacement;
         leftPoints.push({ x, y: yCenter - widthMod * 0.5 });
         rightPoints.push({ x, y: yCenter + widthMod * 0.5 });
       }

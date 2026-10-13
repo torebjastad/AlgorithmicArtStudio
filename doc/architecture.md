@@ -94,17 +94,22 @@ animate(now) {
 
 ---
 
-## Viewport Zoom & Coordinate Transformation Engine
+## Native Camera Zoom & Coordinate Transformation Engine
 
-To eliminate edge discontinuities caused by initial boundary spawning or inspect fine fractal vortices, the studio features a real-time viewport zoom pipeline:
+To eliminate boundary discontinuities and inspect fine fractal vortices **without losing resolution**, the studio features a true **camera projection zoom pipeline** instead of post-render CSS bitmap scaling:
 
-1. **Hardware-Accelerated Scaling**:
-   - Scales `#canvas-container` via CSS `transform: scale(zoom)` with `transform-origin: center center` and `will-change: transform`.
-   - Clamped between `0.5x` (overview) and `5.0x` (deep magnification).
-   - Zero reallocation overhead: instant 60 FPS scaling for both WebGL2 (GPGPU particles, Domain Warp) and Canvas2D without clearing particle buffers or rebuilding textures.
+1. **Zero Resolution Loss (Native Framebuffer Rasterization)**:
+   - Canvases remain 1:1 with screen pixels (`transform: none`). No CSS canvas magnification is applied, eliminating blurriness, pixelation, or fat stroke artifacts.
+   - **GPU Particles (`gpu-particles.js`)**: The instanced ribbon quad vertex shader applies a camera projection from the viewport center:
+     $$\text{projPos} = \text{center} + (\text{pos} - \text{center}) \times u\_zoom$$
+     Particles are rasterized directly onto the native framebuffer at physical display resolution with analytic Gaussian sub-pixel anti-aliasing.
+   - **Domain Warp (`domain-warp.js`)**: Evaluates the procedural multi-tier fBm equations per-fragment at `(u_scale / u_zoom)` with infinite mathematical precision.
+   - **Flow Fields (`flow-fields.js`)**: Batch-draws particle vectors projected by camera zoom onto the native high-DPI canvas buffer with crisp 1:1 line widths.
+   - **Topography, 3D Terrain & Ribbons**: Heightmaps and 3D camera FOV scale smoothly with camera zoom.
+   - **Never Decay Protection**: When `fadeRate <= 0.00001`, changing zoom refreshes the canvas buffer so the new cropped camera view accumulates cleanly.
 
 2. **Inverse Coordinate Mapping**:
-   When the canvas container is scaled by $Z$, screen coordinates $(s_x, s_y)$ relative to screen center $(c_x, c_y)$ map to canvas buffer coordinates $(p_x, p_y)$:
+   When the camera zoom is $Z$, screen coordinates $(s_x, s_y)$ relative to screen center $(c_x, c_y)$ map to simulation space coordinates $(p_x, p_y)$:
    $$p_x = c_x + \frac{s_x - c_x}{Z}, \quad p_y = c_y + \frac{s_y - c_y}{Z}$$
    - Applied inside `updatePointer()` so all generative physics forces, hover tracking, and particle brush painting spawn precisely underneath the user's cursor or finger.
    - Brush cursor ring diameter scales by $D \times Z$ in screen space to perfectly match the painted area.
@@ -113,7 +118,7 @@ To eliminate edge discontinuities caused by initial boundary spawning or inspect
    - **Desktop Mouse Wheel**: Smooth exponential damping: $\text{factor} = e^{-\Delta y \cdot 0.0015}$. Ignored when scrolling over HUD drawers or modal dialogs.
    - **Touch Pinch**: Tracks two-touch distance $\sqrt{(x_1 - x_2)^2 + (y_1 - y_2)^2}$ and applies the scale ratio directly to `initialPinchZoom`. Disambiguates cleanly from two-finger tap (Play/Pause).
    - **Instant Reset**: Press <kbd>0</kbd> on desktop, click the top HUD `ZOOM` pill, click mobile drawer stats pill, or tap the floating badge `#floating-zoom-badge` to reset to `100%` (1.0x).
-   - **Zoom-Preserved Export**: Exporter captures the active zoomed region when rendering master images, keeping perimeter discontinuities cropped out.
+   - **Native Art Export**: Exporter captures the active cropped view directly at full master resolution.
 
 ---
 

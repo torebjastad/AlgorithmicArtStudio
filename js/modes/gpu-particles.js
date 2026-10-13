@@ -401,6 +401,7 @@ class GPUParticlesMode {
       uniform sampler2D u_velSeedTex;
 
       uniform vec2 u_resolution;
+      uniform float u_zoom;
       uniform float u_strokeWidth;
       uniform float u_streakLength;
       uniform int u_taperMode; // 0: both, 1: intensity only, 2: width only, 3: none / uniform
@@ -420,11 +421,6 @@ class GPUParticlesMode {
           gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
           return;
         }
-
-        vec2 dir = pos - prevPos;
-        float len = length(dir);
-        vec2 uDir = (len > 0.0001) ? dir / len : vec2(1.0, 0.0);
-        vec2 vDir = vec2(-uDir.y, uDir.x);
 
         float lifeRatio = clamp(posLife.z / posLife.w, 0.0, 1.0);
 
@@ -458,7 +454,7 @@ class GPUParticlesMode {
           }
         }
 
-        // Particle Radius / Half-width calculation
+        // Particle Radius / Half-width calculation in native physical screen pixels
         float sizeVar = 1.0;
         if (u_particleShape == 1) {
           // Organic varied radiuses (various radiuses)
@@ -468,11 +464,19 @@ class GPUParticlesMode {
 
         float radius = max(0.4, u_strokeWidth * 0.5 * sizeVar) * widthMultiplier;
 
-        // Tail and Head endpoints:
-        // Ensure segment covers distance moved to form an unbroken continuous trail
+        // Camera zoom projection into the particles (crops to center, keeping 100% native resolution)
+        vec2 center = u_resolution * 0.5;
+        vec2 projPos = center + (pos - center) * u_zoom;
+        vec2 projPrevPos = center + (prevPos - center) * u_zoom;
+        vec2 projDir = projPos - projPrevPos;
+        float projLen = length(projDir);
+        vec2 uDir = (projLen > 0.0001) ? projDir / projLen : vec2(1.0, 0.0);
+        vec2 vDir = vec2(-uDir.y, uDir.x);
+
+        // Tail and Head endpoints in projected screen space:
         float sLen = max(1.0, u_streakLength);
-        vec2 tailPos = pos - dir * sLen;
-        float segLen = length(pos - tailPos);
+        vec2 tailPos = projPos - projDir * sLen;
+        float segLen = length(projPos - tailPos);
 
         // Expand quad bounding box by radius + 1.5px margin for smooth anti-aliasing and circular end caps
         float margin = radius + 1.5;
@@ -853,6 +857,7 @@ class GPUParticlesMode {
     gl.uniform1i(gl.getUniformLocation(this.renderProgram, 'u_velSeedTex'), 1);
 
     gl.uniform2f(gl.getUniformLocation(this.renderProgram, 'u_resolution'), this.app.width, this.app.height);
+    gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_zoom'), this.app.zoom || 1.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_strokeWidth'), p.strokeWidth);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_streakLength'), p.streakLength || 1.0);
     gl.uniform1f(gl.getUniformLocation(this.renderProgram, 'u_glowAlpha'), p.glowAlpha);

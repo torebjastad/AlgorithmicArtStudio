@@ -55,8 +55,6 @@ body, html {
   z-index: 1;
   touch-action: none;
   -webkit-touch-callout: none;
-  transform-origin: center center;
-  will-change: transform;
 }
 
 canvas {

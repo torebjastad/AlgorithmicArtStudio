@@ -59,6 +59,7 @@ class DomainWarpMode {
       uniform vec2 u_mouse;
       uniform float u_mouseInfluence;
       uniform float u_scale;
+      uniform float u_zoom;
       uniform float u_warpIntensity;
       uniform float u_octaves;
       uniform float u_persistence;
@@ -127,10 +128,10 @@ class DomainWarpMode {
 
       void main() {
         vec2 st = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
-        st *= u_scale;
+        st *= (u_scale / max(0.01, u_zoom));
 
         // Mouse interactive swirl & ripple
-        vec2 m = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y) * u_scale;
+        vec2 m = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y) * (u_scale / max(0.01, u_zoom));
         float mDist = length(st - m);
         if (mDist < 1.8 && u_mouseInfluence > 0.01) {
           vec2 toMouse = st - m;
@@ -180,6 +181,7 @@ class DomainWarpMode {
       uniform vec2 u_mouse;
       uniform float u_mouseInfluence;
       uniform float u_scale;
+      uniform float u_zoom;
       uniform float u_warpIntensity;
       uniform float u_octaves;
       uniform float u_persistence;
@@ -244,9 +246,9 @@ class DomainWarpMode {
 
       void main() {
         vec2 st = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
-        st *= u_scale;
+        st *= (u_scale / max(0.01, u_zoom));
 
-        vec2 m = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y) * u_scale;
+        vec2 m = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y) * (u_scale / max(0.01, u_zoom));
         float mDist = length(st - m);
         if (mDist < 1.8 && u_mouseInfluence > 0.01) {
           vec2 toMouse = st - m;
@@ -313,6 +315,7 @@ class DomainWarpMode {
       u_mouse: [mouse.x * glRenderer.dpr, (this.app.height - mouse.y) * glRenderer.dpr],
       u_mouseInfluence: mouseInf,
       u_scale: p.scale,
+      u_zoom: this.app.zoom || 1.0,
       u_warpIntensity: p.warpIntensity,
       u_octaves: p.octaves,
       u_persistence: p.persistence,
@@ -355,6 +358,7 @@ class DomainWarpMode {
       u_mouse: [0, 0],
       u_mouseInfluence: 0.0,
       u_scale: p.scale,
+      u_zoom: this.app.zoom || 1.0,
       u_warpIntensity: p.warpIntensity,
       u_octaves: p.octaves,
       u_persistence: p.persistence,

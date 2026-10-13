@@ -297,7 +297,11 @@ class FlowFieldMode {
     ctx.lineCap = (p.particleShape === 'flat') ? 'butt' : 'round';
     ctx.lineJoin = (p.particleShape === 'flat') ? 'miter' : 'round';
 
-    // Batch draw particle strokes
+    const z = this.app.zoom || 1.0;
+    const cx = this.app.width * 0.5;
+    const cy = this.app.height * 0.5;
+
+    // Batch draw particle strokes (projected by camera zoom at 100% native resolution)
     for (let i = 0; i < count; i++) {
       if (this.x[i] < -100 || this.prevX[i] < -100) continue;
 
@@ -314,12 +318,30 @@ class FlowFieldMode {
         width *= (0.3 + 0.7 * alpha) * (0.8 + Math.min(speedVal, 4.0) * 0.3);
       }
 
+      let x1 = this.prevX[i];
+      let y1 = this.prevY[i];
+      let x2 = this.x[i];
+      let y2 = this.y[i];
+
+      if (z !== 1.0) {
+        x1 = cx + (x1 - cx) * z;
+        y1 = cy + (y1 - cy) * z;
+        x2 = cx + (x2 - cx) * z;
+        y2 = cy + (y2 - cy) * z;
+      }
+
+      // Skip strokes entirely outside screen bounds
+      if ((x1 < -40 && x2 < -40) || (x1 > this.app.width + 40 && x2 > this.app.width + 40) ||
+          (y1 < -40 && y2 < -40) || (y1 > this.app.height + 40 && y2 > this.app.height + 40)) {
+        continue;
+      }
+
       ctx.lineWidth = Math.max(0.5, width);
       ctx.strokeStyle = palette.sample(this.colorT[i], alpha * 0.85);
 
       ctx.beginPath();
-      ctx.moveTo(this.prevX[i], this.prevY[i]);
-      ctx.lineTo(this.x[i], this.y[i]);
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
       ctx.stroke();
     }
 

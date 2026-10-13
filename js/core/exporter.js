@@ -48,21 +48,11 @@ class Exporter {
     if (typeof currentMode.renderToCanvas === 'function') {
       await currentMode.renderToCanvas(offCanvas, width, height);
     } else {
-      // Fallback: draw current active canvas scaled up with bicubic smoothing (respecting zoom crop if active)
+      // Fallback: draw current active canvas (which is rendered at full native resolution with camera zoom)
       const ctx = offCanvas.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      const z = this.app.zoom || 1.0;
-      const act = this.app.activeCanvas;
-      if (z !== 1.0 && act && act.width && act.height) {
-        const srcW = act.width / z;
-        const srcH = act.height / z;
-        const srcX = (act.width - srcW) / 2;
-        const srcY = (act.height - srcH) / 2;
-        ctx.drawImage(act, srcX, srcY, srcW, srcH, 0, 0, width, height);
-      } else {
-        ctx.drawImage(act, 0, 0, width, height);
-      }
+      ctx.drawImage(this.app.activeCanvas, 0, 0, width, height);
     }
 
     // Trigger download
